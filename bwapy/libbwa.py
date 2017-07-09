@@ -178,8 +178,11 @@ class BwaAligner(object):
         :returns: tuple of :class:`Alignment`
         """
         alns = libbwa.align(self.index, seq.encode())
-        alignments = tuple(self._build_alignment(alns.aln[i]) for i in range(alns.n))
-        libbwa.free_mem_aln_v(alns)
+        if alns == ffi.NULL:
+            alignments = tuple()
+        else:
+            alignments = tuple(self._build_alignment(alns.aln[i]) for i in range(alns.n))
+            libbwa.free_mem_aln_v(alns)
         return alignments
 
 

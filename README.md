@@ -23,7 +23,7 @@ makes some amendments to the bwa/Makefile. To build and install the package one 
 therefore run:
 
     git clone --recursive https://git/research/bwapy.git
-    make libbwa.a 
+    make bwa/libbwa.a 
     python setup.py install
 
 
@@ -36,9 +36,12 @@ alignments of sequences given as strings:
 
 ```python
 from bwapy import BwaAligner
-aligner = BwaAligner(args.index)
+index = 'path/to/index' # the path given to bwa index
+seq = 'ACGATCGCGATCGA'
+
+aligner = BwaAligner(index)
 alignments = aligner.align_seq(seq)
-print('Found {} alignments for input {}.'.format(len(alignments), i))
+print('Found {} alignments.'.format(len(alignments))
 for aln in alignments:
     print('  ', aln)
 ```
