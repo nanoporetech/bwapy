@@ -11,23 +11,24 @@ under GNU General Public License v3.0.
 
 Documentation can be found at https://nanoporetech.github.io/bwapy/.
 
-Build
------
+Installation
+------------
 
-The project should be installed inside a virtual environment. A Makefile is
-provided to fetch, compile and install all direct dependencies into an
-environment.
+The git source repository contains bwa as a submodule. The repository should therefore
+be cloned using the recursive option.
 
-To setup the environment run:
+The package `setup.py` script requires `libbwa.a` to have been built in the submodule
+directory before running. This can be performed via the `libbwa.a` target, which first
+makes some amendments to the bwa/Makefile. To build and install the package one should
+therefore run:
 
-    git clone --recursive https://github.com/nanoporetech/bwapy.git
-    cd bwapy
-    make install
-    . ./venv/bin/activate
+    git clone --recursive https://git/research/bwapy.git
+    make libbwa.a 
+    python setup.py install
 
 
-Example
--------
+Performing Alignments
+---------------------
 
 The `BwaAligner` class provides a pythonic interface to `bwa mem` aligner. It
 takes as input a bwa index fileset on construction and can then be used to find

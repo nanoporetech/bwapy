@@ -13,8 +13,12 @@ venv/bin/activate:
 	test -d venv || virtualenv venv --python=python3
 	${IN_VENV} && pip install pip --upgrade
 
-install: venv
-	cd bwa && ${SEDI} 's/int\ bwa_verbose\ =\ 3;/int\ bwa_verbose\ =\ 2;/' bwa.c && make libbwa.a
+bwa/libbwa.a:
+	${SEDI} 's/int\ bwa_verbose\ =\ 3;/int\ bwa_verbose\ =\ 2;/' bwa/bwa.c
+	${SEDI} 's/CFLAGS=.*/CFLAGS=-g\ -Wall\ -Wno-unused-function\ -O2\ -fPIC/' bwa/Makefile
+	cd bwa && make libbwa.a 
+
+install: venv bwa/libbwa.a
 	${IN_VENV} && pip install -r requirements.txt && python setup.py install
 
 
