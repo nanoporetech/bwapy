@@ -14,12 +14,14 @@ The git source repository contains bwa as a submodule. The repository should the
 be cloned using the recursive option.
 
 The package `setup.py` script requires `libbwa.a` to have been built in the submodule
-directory before running. To build and install the package one should therefore run:
+directory before running. This can be performed via the `libbwa.a` target, which first
+makes some amendments to the bwa/Makefile. To build and install the package one should
+therefore run:
 
 .. code-block:: bash
 
     git clone --recursive https://git/research/bwapy.git
-    cd bwapy/bwa && make libbwa.a && cd ..
+    make libbwa.a 
     python setup.py install
 
 
