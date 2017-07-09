@@ -116,9 +116,10 @@ mem_aln_v *align(bwaidx_t * idx, char * seq) {
 		mem_aln_v *alns = new_mem_aln_v(primary);
 		alns->n = primary;
 
+		primary = 0;
         	for (size_t i = 0; i < ar.n; ++i) {
 			if (ar.a[i].secondary >= 0) continue;
-			alns->aln[i] = mem_reg2aln(opt, idx->bns, idx->pac, seq_len, seq, &ar.a[i]);
+			alns->aln[primary++] = mem_reg2aln(opt, idx->bns, idx->pac, seq_len, seq, &ar.a[i]);
 		}
 
 		free(ar.a);
