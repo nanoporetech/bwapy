@@ -11,11 +11,9 @@ from setuptools.command.install import install
 import pkg_resources
 
 
-#TODO: fill in these
-__pkg_name__ = ''
-__author__ = ''
-__description__ = ''
-
+__pkg_name__ = 'bwapy'
+__author__ = 'cwright'
+__description__ = 'Bindings to bwa alinger.'
 
 __path__ = os.path.dirname(__file__)
 __pkg_path__ = os.path.join(os.path.join(__path__, __pkg_name__))
@@ -45,22 +43,17 @@ with open(os.path.join(dir_path, 'requirements.txt')) as fh:
             req.split('/')[-1].split('@')[0]
     install_requires.append(req)
 
-
-extra_requires = {
-    #TODO: any optional requirements
-}
-
-
+extra_requires = {}
 
 extensions = []
-#TODO: compile any extensions
-#extensions.append(Extension(
-#    'name',
-#    sources=[]
-#    include_dirs=[],
-#    extra_compile_args=['-pedantic', '-Wall', '-std=c99', '-march=native', '-ffast-math', '-DUSE_SSE2', '-DNDEBUG'],
-#    libraries=[] #e.g. 'blas'
-#))
+extensions.append(Extension(
+    'bwalib',
+    sources=[os.path.join('bwapy', 'libbwapy.c')],
+    include_dirs=['bwa'],
+    extra_compile_args=['-pedantic', '-Wall', '-std=c99', '-march=native', '-ffast-math', '-DUSE_SSE2', '-DNDEBUG'],
+    libraries=[],
+    extra_objects=[os.path.join('bwa','libbwa.a')]
+))
 
 
 setup(
@@ -79,16 +72,11 @@ setup(
     packages=find_packages(exclude=['*.test', '*.test.*', 'test.*', 'test']),
     package_data={},
     zip_safe=False,
-    data_files=[
-        #TODO: Probably won't have these, use package_data in most cases 
-    ],
+    data_files=[],
     entry_points={
         'console_scripts': [
-            #TODO: add entry points
-            #'name' = {}.package.module:function'.format(__pkg_name__)
+            'bwamempy = {}.libbwa:main'.format(__pkg_name__)
         ]
     },
-    scripts=[
-        #TODO: Probably won't have these, use entry_points
-    ]
+    scripts=[]
 )
