@@ -4,6 +4,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <getopt.h>
+#include <math.h>
 #include "bwa.h"
 #include "bwamem.h"
 
