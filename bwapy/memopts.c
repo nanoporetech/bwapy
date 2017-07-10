@@ -1,17 +1,11 @@
-#include <zlib.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
-#include <limits.h>
 #include <ctype.h>
-#include <math.h>
+#include <getopt.h>
 #include "bwa.h"
 #include "bwamem.h"
-#include "kvec.h"
-#include "utils.h"
-#include "bntseq.h"
-#include "kseq.h"
 
 
 // The options that we parse, some options removed (mostly paired end things)
