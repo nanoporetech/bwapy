@@ -35,7 +35,7 @@ ALLSPHINXOPTS   = -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
 
 DOCSRC = docs
 
-docs: venv
+docs: install # we install the package to ensure imports
 	${IN_VENV} && pip install sphinx sphinx_rtd_theme sphinx-argparse
 	${IN_VENV} && cd $(DOCSRC) && $(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
