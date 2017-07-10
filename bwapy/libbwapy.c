@@ -6,7 +6,6 @@
 #include <assert.h>
 #include "bwamem.h"
 
-
 static PyMethodDef module_functions[] = {
     {NULL, NULL, 0, NULL}
 };
@@ -93,11 +92,11 @@ bwaidx_t *bwa_idx_load_all(const char *hint){
 	return bwa_idx_load(hint, BWA_IDX_ALL);
 }
 
-mem_aln_v *align(bwaidx_t * idx, char * seq) {
-	mem_opt_t *opt;
+mem_aln_v *align(mem_opt_t * opt, bwaidx_t * idx, char * seq) {
+	//mem_opt_t *opt;
         const size_t seq_len = strlen(seq);
 
-	opt = mem_opt_init(); // default values
+	//opt = mem_opt_init(); // default values
 	mem_alnreg_v ar;
 	ar = mem_align1(opt, idx->bwt, idx->bns, idx->pac, seq_len, seq);
 

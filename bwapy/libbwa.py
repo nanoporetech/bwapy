@@ -135,10 +135,52 @@ ffi.cdef("""
   bwaidx_t *bwa_idx_load_all(const char *hint); 
   void bwa_idx_destroy(bwaidx_t *idx);
 
+  /////////////////
+  // Option parsing
+  //
+  typedef struct {
+    int a, b;               // match score and mismatch penalty
+    int o_del, e_del;
+    int o_ins, e_ins;
+    int pen_unpaired;       // phred-scaled penalty for unpaired reads
+    int pen_clip5,pen_clip3;// clipping penalty. This score is not deducted from the DP score.
+    int w;                  // band width
+    int zdrop;              // Z-dropoff
+    
+    uint64_t max_mem_intv;
+    
+    int T;                  // output score threshold; only affecting output
+    int flag;               // see MEM_F_* macros
+    int min_seed_len;       // minimum seed length
+    int min_chain_weight;
+    int max_chain_extend;
+    float split_factor;     // split into a seed if MEM is longer than min_seed_len*split_factor
+    int split_width;        // split into a seed if its occurence is smaller than this value
+    int max_occ;            // skip a seed if its occurence is larger than this value
+    int max_chain_gap;      // do not chain seed if it is max_chain_gap-bp away from the closest seed
+    int n_threads;          // number of threads
+    int chunk_size;         // process chunk_size-bp sequences in a batch
+    float mask_level;       // regard a hit as redundant if the overlap with another better hit is over mask_level times the min length of the two hits
+    float drop_ratio;       // drop a chain if its seed coverage is below drop_ratio times the seed coverage of a better chain overlapping with the small chain
+    float XA_drop_ratio;    // when counting hits for the XA tag, ignore alignments with score < XA_drop_ratio * max_score; only effective for the XA tag
+    float mask_level_redun;
+    float mapQ_coef_len;
+    int mapQ_coef_fac;
+    int max_ins;            // when estimating insert size distribution, skip pairs with insert longer than this value
+    int max_matesw;         // perform maximally max_matesw rounds of mate-SW for each end
+    int max_XA_hits, max_XA_hits_alt; // if there are max_hits or fewer, output them all
+    int8_t mat[25];         // scoring matrix; mat[0] == 0 if unset
+  } mem_opt_t;
+
+  mem_opt_t * get_opts(int argc, char *argv[], bwaidx_t * idx);
+
+  static const char valid_opts[];
+
+
   ///////////////////
   // Run an alignment
   //
-  mem_aln_v *align(bwaidx_t * index, char * seq);
+  mem_aln_v *align(mem_opt_t * opt, bwaidx_t * index, char * seq);
 """)
 
 
@@ -147,28 +189,62 @@ Alignment = namedtuple('Alignment', [
 ])
 
 class BwaAligner(object):
-    def __init__(self, index:str):
+    def __init__(self, index:str, options:str=''):
+        """Interface to bwa mem alignment.
+
+        :param index: bwa index base path.
+        :param options: alignment options as would be given
+            on the bwa mem command line.
+
+        """
         self.index_base = index.encode()
-        self.cigchar = "MIDSH"
+        self._cigchar = "MIDSH"
+
+
+        # find which options are valid
+        valid_opts = ffi.string(libbwa.valid_opts).decode().replace(':', '')
+        for opt in options.split():
+            if opt[0] != '-':
+                continue
+            if opt[1] not in valid_opts:
+                raise ValueError(
+                    "Option '{}' is not a valid option (allowed: {}).".format(
+                     opt, ' '.join(valid_opts)
+                ))
+
+        # we need to pass the index to the option parsing
+        # TODO: clean up this requirement
         self.index = libbwa.bwa_idx_load_all(self.index_base)
         if self.index == ffi.NULL:
             raise ValueError('Failed to load bwa index.')
 
+        argv = ['bwapy'] + options.split()
+        argc = len(argv)
+        self.opt = libbwa.get_opts(argc,
+            [ffi.new('char[]', x.encode()) for x in argv],
+            self.index
+        )
+        if self.opt == ffi.NULL:
+            raise ValueError('Failed to parse options.')
+
+
     def __del__(self):
-        libbwa.bwa_idx_destroy(self.index)
+        if hasattr(self, 'index'):
+            libbwa.bwa_idx_destroy(self.index)
+        if hasattr(self, 'opts'):
+            cffi.free(self.opts)
 
     def _build_alignment(self, aln):
         cigar = aln.cigar
         cigar = ''.join(
             # oplen + op
-            str(cigar[k]>>4) + self.cigchar[cigar[k] & 0xf]
+            str(cigar[k]>>4) + self._cigchar[cigar[k] & 0xf]
             for k in range(aln.n_cigar)
         )
         return Alignment(
             ffi.string(self.index.bns.anns[aln.rid].name).decode(),
             '+-'[aln.is_rev], aln.pos, aln.mapq, cigar, aln.NM
         )
-
 
     def align_seq(self, seq:str):
         """Align a sequence to the index.
@@ -177,7 +253,7 @@ class BwaAligner(object):
 
         :returns: tuple of :class:`Alignment`
         """
-        alns = libbwa.align(self.index, seq.encode())
+        alns = libbwa.align(self.opt, self.index, seq.encode())
         if alns == ffi.NULL:
             alignments = tuple()
         else:
@@ -194,8 +270,11 @@ def get_parser():
 
 
 def main():
-    args =  get_parser().parse_args()
-    aligner = BwaAligner(args.index)
+    args, opts = get_parser().parse_known_args()
+    options = ''
+    if len(opts) > 0:
+        options = ' '.join(opts)
+    aligner = BwaAligner(args.index, options=options)
     for i, seq in enumerate(args.sequence, 1):
         alignments = aligner.align_seq(seq)
         print('Found {} alignments for input {}.'.format(len(alignments), i))
