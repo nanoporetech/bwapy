@@ -51,3 +51,15 @@ The alignments are returned as a named tuple, e.g.:
 ```python
 Alignment(rname='yeast', orient='+', pos=0, mapq=60, cigar='915M3D29M3D27M3D13M', NM=12)
 ```
+
+Alignment parameters can be given as they are on the `bwa mem` command line:
+
+```python
+from bwapy import BwaAligner
+index = 'path/to/index'
+options = '-x ont2d -A 1 -B 0'
+aligner = BwaAligner(index, options=options)
+```
+
+Some options which do not make sense when aligning single sequences, have been
+disabled (notably options related to paired-end reads).
