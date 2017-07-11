@@ -109,7 +109,6 @@ mem_aln_v *align(mem_opt_t * opt, bwaidx_t * idx, char * seq) {
 
         if(primary == 0){
 		free(ar.a);
-		free(opt);
 		return NULL;
 	} else {
 		mem_aln_v *alns = new_mem_aln_v(primary);
@@ -122,8 +121,6 @@ mem_aln_v *align(mem_opt_t * opt, bwaidx_t * idx, char * seq) {
 		}
 
 		free(ar.a);
-		free(opt);
-
 		return alns;
 	}
 }
