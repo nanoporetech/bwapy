@@ -9,7 +9,7 @@ git:
 
 before_install:
   - sudo apt-get -qq update
-  - sudo apt-get install -y python3-all-dev
+  - sudo apt-get install -y python3-all-dev zlib1g
 
 script:
   - make install
