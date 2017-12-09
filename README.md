@@ -22,7 +22,8 @@ directory before running. This can be performed via the `libbwa.a` target, which
 makes some amendments to the bwa/Makefile. To build and install the package one should
 therefore run:
 
-    git clone --recursive https://git/research/bwapy.git
+    git clone --recursive https://github.com/nanoporetech/bwapy.git
+    cd bwapy
     make bwa/libbwa.a 
     python setup.py install
 
