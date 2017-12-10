@@ -20,7 +20,8 @@ therefore run:
 
 .. code-block:: bash
 
-    git clone --recursive https://git/research/bwapy.git
+    git clone --recursive https://github.com/nanoporetech/bwapy.git
+    cd bwapy
     make bwa/libbwa.a 
     python setup.py install
 
