@@ -52,7 +52,7 @@ extensions.append(Extension(
     sources=[os.path.join('bwapy', 'libbwapy.c'), os.path.join('bwapy', 'memopts.c')],
     include_dirs=['bwa'],
     extra_compile_args=['-pedantic', '-Wall', '-std=c99', '-march=native', '-ffast-math', '-DUSE_SSE2', '-DNDEBUG'],
-    libraries=[],
+    libraries=['z'],
     extra_objects=[os.path.join('bwa','libbwa.a')]
 ))
 
