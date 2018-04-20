@@ -10,7 +10,7 @@
 
 
 // The options that we parse, some options removed (mostly paired end things)
-const char valid_opts[] = "MYjk:c:v:s:r:A:B:O:E:U:w:L:d:T:Q:D:m:N:W:x:G:h:y:X:";
+const char valid_opts[] = "aMYjk:c:v:s:r:A:B:O:E:U:w:L:d:T:Q:D:m:N:W:x:G:h:y:X:";
 
 static void update_a(mem_opt_t *opt, const mem_opt_t *opt0)
 {
@@ -54,6 +54,7 @@ mem_opt_t * get_opts(int argc, char *argv[], bwaidx_t * idx)
 		else if (c == 'B') opt->b = atoi(optarg), opt0.b = 1;
 		else if (c == 'T') opt->T = atoi(optarg), opt0.T = 1;
 		else if (c == 'U') opt->pen_unpaired = atoi(optarg), opt0.pen_unpaired = 1;
+		else if (c == 'a') opt->flag |= MEM_F_ALL;
 		else if (c == 'M') opt->flag |= MEM_F_NO_MULTI;
 		else if (c == 'Y') opt->flag |= MEM_F_SOFTCLIP;
 		else if (c == 'c') opt->max_occ = atoi(optarg), opt0.max_occ = 1;

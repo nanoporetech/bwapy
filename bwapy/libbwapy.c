@@ -92,35 +92,35 @@ bwaidx_t *bwa_idx_load_all(const char *hint){
 	return bwa_idx_load(hint, BWA_IDX_ALL);
 }
 
-mem_aln_v *align(mem_opt_t * opt, bwaidx_t * idx, char * seq) {
-	//mem_opt_t *opt;
-        const size_t seq_len = strlen(seq);
-
-	//opt = mem_opt_init(); // default values
-	mem_alnreg_v ar;
-	ar = mem_align1(opt, idx->bwt, idx->bns, idx->pac, seq_len, seq);
-
-	// We won't take secondary alignments
+size_t count_primary(mem_alnreg_v *ar) {
 	size_t primary = 0;
-        for (size_t i = 0; i < ar.n; ++i) {
-		if (ar.a[i].secondary >= 0) continue;
-		primary++;
+	for (size_t i = 0; i < ar->n; ++i) {
+		if (ar->a[i].secondary >= 0) continue;
+		++primary;
+	}
+	return primary;
+}
+
+mem_aln_v *align(mem_opt_t *opt, bwaidx_t *idx, char *seq) {
+	// call the aligner
+	size_t seq_len = strlen(seq);
+	mem_alnreg_v ar = mem_align1(opt, idx->bwt, idx->bns, idx->pac, seq_len, seq);
+
+	// check if we take all or only primary alignments
+	int take_all = opt->flag | MEM_F_ALL;
+	size_t n_alns = take_all ? ar.n : count_primary(&ar);
+
+	// allocate memory for the result if there any
+	mem_aln_v *alns = n_alns ? new_mem_aln_v(ar.n) : NULL;
+
+	// copy results (if there are any)
+	size_t j=0;
+        for (size_t i=0; i < ar.n; ++i) {
+		if (!take_all && ar.a[i].secondary) continue;
+		alns->aln[j++] = mem_reg2aln(opt, idx->bns, idx->pac, seq_len, seq, &ar.a[i]);
 	}
 
-        if(primary == 0){
-		free(ar.a);
-		return NULL;
-	} else {
-		mem_aln_v *alns = new_mem_aln_v(primary);
-		alns->n = primary;
-
-		primary = 0;
-        	for (size_t i = 0; i < ar.n; ++i) {
-			if (ar.a[i].secondary >= 0) continue;
-			alns->aln[primary++] = mem_reg2aln(opt, idx->bns, idx->pac, seq_len, seq, &ar.a[i]);
-		}
-
-		free(ar.a);
-		return alns;
-	}
+	// free the intermidiate results and return
+	free(ar.a);
+	return alns;
 }

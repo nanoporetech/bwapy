@@ -15,7 +15,7 @@ def get_shared_lib(name):
     """Cross-platform resolution of shared-object libraries, working
     around vagueries of setuptools.
     :param name: name of shared library to find.
-    
+
     :returns: FFI shared library object.
     """
     try:
@@ -70,7 +70,7 @@ ffi.cdef("""
     int n_cigar;     // number of CIGAR operations
     uint32_t *cigar; // CIGAR in the BAM encoding: opLen<<4|op; op to integer mapping: MIDSH=>01234
     char *XA;        // alternative mappings
-  
+
     int score, sub, alt_sc;
   } mem_aln_t;
 
@@ -132,7 +132,7 @@ ffi.cdef("""
     uint8_t  *mem;
   } bwaidx_t;
 
-  bwaidx_t *bwa_idx_load_all(const char *hint); 
+  bwaidx_t *bwa_idx_load_all(const char *hint);
   void bwa_idx_destroy(bwaidx_t *idx);
 
   /////////////////
@@ -146,9 +146,9 @@ ffi.cdef("""
     int pen_clip5,pen_clip3;// clipping penalty. This score is not deducted from the DP score.
     int w;                  // band width
     int zdrop;              // Z-dropoff
-    
+
     uint64_t max_mem_intv;
-    
+
     int T;                  // output score threshold; only affecting output
     int flag;               // see MEM_F_* macros
     int min_seed_len;       // minimum seed length
@@ -280,4 +280,4 @@ def main():
         print('Found {} alignments for input {}.'.format(len(alignments), i))
         for aln in alignments:
             print('  ', aln)
- 
+
