@@ -84,6 +84,7 @@ void free_mem_aln_v (mem_aln_v *alns) {
 		for (size_t i = 0; i < alns->n; ++i) {
 			free(alns->aln[i].cigar);
 		}
+		free(alns->aln);
         	free(alns);
 	}
 }
