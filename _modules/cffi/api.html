@@ -1,0 +1,1156 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>cffi.api &mdash; Bwapy 0.1.4 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script type="text/javascript" src="../../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> Bwapy
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1.4
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../bwapy.html">bwapy package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Bwapy</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>cffi.api</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for cffi.api</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">sys</span><span class="o">,</span> <span class="nn">types</span>
+<span class="kn">from</span> <span class="nn">.lock</span> <span class="k">import</span> <span class="n">allocate_lock</span>
+<span class="kn">from</span> <span class="nn">.error</span> <span class="k">import</span> <span class="n">CDefError</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">model</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">callable</span>
+<span class="k">except</span> <span class="ne">NameError</span><span class="p">:</span>
+    <span class="c1"># Python 3.1</span>
+    <span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">Callable</span>
+    <span class="n">callable</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">Callable</span><span class="p">)</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">basestring</span>
+<span class="k">except</span> <span class="ne">NameError</span><span class="p">:</span>
+    <span class="c1"># Python 3.x</span>
+    <span class="n">basestring</span> <span class="o">=</span> <span class="nb">str</span>
+
+<span class="n">_unspecified</span> <span class="o">=</span> <span class="nb">object</span><span class="p">()</span>
+
+
+
+<span class="k">class</span> <span class="nc">FFI</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    The main top-level class that you instantiate once, or once per module.</span>
+
+<span class="sd">    Example usage:</span>
+
+<span class="sd">        ffi = FFI()</span>
+<span class="sd">        ffi.cdef(&quot;&quot;&quot;</span>
+<span class="sd">            int printf(const char *, ...);</span>
+<span class="sd">        &quot;&quot;&quot;)</span>
+
+<span class="sd">        C = ffi.dlopen(None)   # standard library</span>
+<span class="sd">        -or-</span>
+<span class="sd">        C = ffi.verify()  # use a C compiler: verify the decl above is right</span>
+
+<span class="sd">        C.printf(&quot;hello, %s!\n&quot;, ffi.new(&quot;char[]&quot;, &quot;world&quot;))</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Create an FFI instance.  The &#39;backend&#39; argument is used to</span>
+<span class="sd">        select a non-default backend, mostly for tests.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">backend</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># You need PyPy (&gt;= 2.0 beta), or a CPython (&gt;= 2.6) with</span>
+            <span class="c1"># _cffi_backend.so compiled.</span>
+            <span class="kn">import</span> <span class="nn">_cffi_backend</span> <span class="k">as</span> <span class="nn">backend</span>
+            <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">__version__</span>
+            <span class="k">if</span> <span class="n">backend</span><span class="o">.</span><span class="n">__version__</span> <span class="o">!=</span> <span class="n">__version__</span><span class="p">:</span>
+                <span class="c1"># bad version!  Try to be as explicit as possible.</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">backend</span><span class="p">,</span> <span class="s1">&#39;__file__&#39;</span><span class="p">):</span>
+                    <span class="c1"># CPython</span>
+                    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Version mismatch: this is the &#39;cffi&#39; package version </span><span class="si">%s</span><span class="s2">, located in </span><span class="si">%r</span><span class="s2">.  When we import the top-level &#39;_cffi_backend&#39; extension module, we get version </span><span class="si">%s</span><span class="s2">, located in </span><span class="si">%r</span><span class="s2">.  The two versions should be equal; check your installation.&quot;</span> <span class="o">%</span> <span class="p">(</span>
+                        <span class="n">__version__</span><span class="p">,</span> <span class="vm">__file__</span><span class="p">,</span>
+                        <span class="n">backend</span><span class="o">.</span><span class="n">__version__</span><span class="p">,</span> <span class="n">backend</span><span class="o">.</span><span class="vm">__file__</span><span class="p">))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># PyPy</span>
+                    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Version mismatch: this is the &#39;cffi&#39; package version </span><span class="si">%s</span><span class="s2">, located in </span><span class="si">%r</span><span class="s2">.  This interpreter comes with a built-in &#39;_cffi_backend&#39; module, which is version </span><span class="si">%s</span><span class="s2">.  The two versions should be equal; check your installation.&quot;</span> <span class="o">%</span> <span class="p">(</span>
+                        <span class="n">__version__</span><span class="p">,</span> <span class="vm">__file__</span><span class="p">,</span> <span class="n">backend</span><span class="o">.</span><span class="n">__version__</span><span class="p">))</span>
+            <span class="c1"># (If you insist you can also try to pass the option</span>
+            <span class="c1"># &#39;backend=backend_ctypes.CTypesBackend()&#39;, but don&#39;t</span>
+            <span class="c1"># rely on it!  It&#39;s probably not going to work well.)</span>
+
+        <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">cparser</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span> <span class="o">=</span> <span class="n">backend</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span> <span class="o">=</span> <span class="n">allocate_lock</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parser</span> <span class="o">=</span> <span class="n">cparser</span><span class="o">.</span><span class="n">Parser</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cached_btypes</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parsed_types</span> <span class="o">=</span> <span class="n">types</span><span class="o">.</span><span class="n">ModuleType</span><span class="p">(</span><span class="s1">&#39;parsed_types&#39;</span><span class="p">)</span><span class="o">.</span><span class="vm">__dict__</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_new_types</span> <span class="o">=</span> <span class="n">types</span><span class="o">.</span><span class="n">ModuleType</span><span class="p">(</span><span class="s1">&#39;new_types&#39;</span><span class="p">)</span><span class="o">.</span><span class="vm">__dict__</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_function_caches</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_libraries</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cdefsources</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_included_ffis</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_windows_unicode</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_init_once_cache</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cdef_version</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_embedding</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_typecache</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">get_typecache</span><span class="p">(</span><span class="n">backend</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">backend</span><span class="p">,</span> <span class="s1">&#39;set_ffi&#39;</span><span class="p">):</span>
+            <span class="n">backend</span><span class="o">.</span><span class="n">set_ffi</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">backend</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;RTLD_&#39;</span><span class="p">):</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">backend</span><span class="p">,</span> <span class="n">name</span><span class="p">))</span>
+        <span class="c1">#</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">BVoidP</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_cached_btype</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">voidp_type</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">BCharA</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_cached_btype</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">char_array_type</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">backend</span><span class="p">,</span> <span class="n">types</span><span class="o">.</span><span class="n">ModuleType</span><span class="p">):</span>
+            <span class="c1"># _cffi_backend: attach these constants to the class</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">FFI</span><span class="p">,</span> <span class="s1">&#39;NULL&#39;</span><span class="p">):</span>
+                <span class="n">FFI</span><span class="o">.</span><span class="n">NULL</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">BVoidP</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="n">FFI</span><span class="o">.</span><span class="n">CData</span><span class="p">,</span> <span class="n">FFI</span><span class="o">.</span><span class="n">CType</span> <span class="o">=</span> <span class="n">backend</span><span class="o">.</span><span class="n">_get_types</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># ctypes backend: attach these constants to the instance</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">NULL</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">BVoidP</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">CData</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">CType</span> <span class="o">=</span> <span class="n">backend</span><span class="o">.</span><span class="n">_get_types</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">buffer</span> <span class="o">=</span> <span class="n">backend</span><span class="o">.</span><span class="n">buffer</span>
+
+    <span class="k">def</span> <span class="nf">cdef</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">csource</span><span class="p">,</span> <span class="n">override</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">packed</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">pack</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Parse the given C source.  This registers all declared functions,</span>
+<span class="sd">        types, and global variables.  The functions and global variables can</span>
+<span class="sd">        then be accessed via either &#39;ffi.dlopen()&#39; or &#39;ffi.verify()&#39;.</span>
+<span class="sd">        The types can be used in &#39;ffi.new()&#39; and other functions.</span>
+<span class="sd">        If &#39;packed&#39; is specified as True, all structs declared inside this</span>
+<span class="sd">        cdef are packed, i.e. laid out without any field alignment at all.</span>
+<span class="sd">        Alternatively, &#39;pack&#39; can be a small integer, and requests for</span>
+<span class="sd">        alignment greater than that are ignored (pack=1 is equivalent to</span>
+<span class="sd">        packed=True).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cdef</span><span class="p">(</span><span class="n">csource</span><span class="p">,</span> <span class="n">override</span><span class="o">=</span><span class="n">override</span><span class="p">,</span> <span class="n">packed</span><span class="o">=</span><span class="n">packed</span><span class="p">,</span> <span class="n">pack</span><span class="o">=</span><span class="n">pack</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">embedding_api</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">csource</span><span class="p">,</span> <span class="n">packed</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">pack</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cdef</span><span class="p">(</span><span class="n">csource</span><span class="p">,</span> <span class="n">packed</span><span class="o">=</span><span class="n">packed</span><span class="p">,</span> <span class="n">pack</span><span class="o">=</span><span class="n">pack</span><span class="p">,</span> <span class="n">dllexport</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_embedding</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_embedding</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+
+    <span class="k">def</span> <span class="nf">_cdef</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">csource</span><span class="p">,</span> <span class="n">override</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">csource</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>    <span class="c1"># unicode, on Python 2</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">csource</span><span class="p">,</span> <span class="n">basestring</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;cdef() argument must be a string&quot;</span><span class="p">)</span>
+            <span class="n">csource</span> <span class="o">=</span> <span class="n">csource</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;ascii&#39;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cdef_version</span> <span class="o">=</span> <span class="nb">object</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_parser</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">csource</span><span class="p">,</span> <span class="n">override</span><span class="o">=</span><span class="n">override</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cdefsources</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">csource</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">override</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">cache</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_function_caches</span><span class="p">:</span>
+                    <span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="n">finishlist</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parser</span><span class="o">.</span><span class="n">_recomplete</span>
+            <span class="k">if</span> <span class="n">finishlist</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_parser</span><span class="o">.</span><span class="n">_recomplete</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">for</span> <span class="n">tp</span> <span class="ow">in</span> <span class="n">finishlist</span><span class="p">:</span>
+                    <span class="n">tp</span><span class="o">.</span><span class="n">finish_backend_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">finishlist</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">dlopen</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">flags</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Load and return a dynamic library identified by &#39;name&#39;.</span>
+<span class="sd">        The standard C library can be loaded by passing None.</span>
+<span class="sd">        Note that functions and types declared by &#39;ffi.cdef()&#39; are not</span>
+<span class="sd">        linked to a particular library, just like C headers; in the</span>
+<span class="sd">        library we only look for the actual (untyped) symbols.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">basestring</span><span class="p">)</span> <span class="ow">or</span>
+                <span class="n">name</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span>
+                <span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">CData</span><span class="p">)):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;dlopen(name): name must be a file name, None, &quot;</span>
+                            <span class="s2">&quot;or an already-opened &#39;void *&#39; handle&quot;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="n">lib</span><span class="p">,</span> <span class="n">function_cache</span> <span class="o">=</span> <span class="n">_make_ffi_library</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">flags</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_function_caches</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">function_cache</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_libraries</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">lib</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">lib</span>
+
+    <span class="k">def</span> <span class="nf">dlclose</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lib</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Close a library obtained with ffi.dlopen().  After this call,</span>
+<span class="sd">        access to functions or variables from the library will fail</span>
+<span class="sd">        (possibly with a segmentation fault).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">type</span><span class="p">(</span><span class="n">lib</span><span class="p">)</span><span class="o">.</span><span class="n">__cffi_close__</span><span class="p">(</span><span class="n">lib</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_typeof_locked</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cdecl</span><span class="p">):</span>
+        <span class="c1"># call me with the lock!</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">cdecl</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parsed_types</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parsed_types</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="c1">#</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cdecl</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>    <span class="c1"># unicode, on Python 2</span>
+            <span class="n">cdecl</span> <span class="o">=</span> <span class="n">cdecl</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;ascii&#39;</span><span class="p">)</span>
+        <span class="c1">#</span>
+        <span class="nb">type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parser</span><span class="o">.</span><span class="n">parse_type</span><span class="p">(</span><span class="n">cdecl</span><span class="p">)</span>
+        <span class="n">really_a_function_type</span> <span class="o">=</span> <span class="nb">type</span><span class="o">.</span><span class="n">is_raw_function</span>
+        <span class="k">if</span> <span class="n">really_a_function_type</span><span class="p">:</span>
+            <span class="nb">type</span> <span class="o">=</span> <span class="nb">type</span><span class="o">.</span><span class="n">as_function_pointer</span><span class="p">()</span>
+        <span class="n">btype</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_cached_btype</span><span class="p">(</span><span class="nb">type</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">btype</span><span class="p">,</span> <span class="n">really_a_function_type</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parsed_types</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
+        <span class="k">return</span> <span class="n">result</span>
+
+    <span class="k">def</span> <span class="nf">_typeof</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cdecl</span><span class="p">,</span> <span class="n">consider_function_as_funcptr</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="c1"># string -&gt; ctype object</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parsed_types</span><span class="p">[</span><span class="n">cdecl</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_typeof_locked</span><span class="p">(</span><span class="n">cdecl</span><span class="p">)</span>
+        <span class="c1">#</span>
+        <span class="n">btype</span><span class="p">,</span> <span class="n">really_a_function_type</span> <span class="o">=</span> <span class="n">result</span>
+        <span class="k">if</span> <span class="n">really_a_function_type</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">consider_function_as_funcptr</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">CDefError</span><span class="p">(</span><span class="s2">&quot;the type </span><span class="si">%r</span><span class="s2"> is a function type, not a &quot;</span>
+                            <span class="s2">&quot;pointer-to-function type&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">cdecl</span><span class="p">,))</span>
+        <span class="k">return</span> <span class="n">btype</span>
+
+    <span class="k">def</span> <span class="nf">typeof</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cdecl</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Parse the C type given as a string and return the</span>
+<span class="sd">        corresponding &lt;ctype&gt; object.</span>
+<span class="sd">        It can also be used on &#39;cdata&#39; instance to get its C type.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cdecl</span><span class="p">,</span> <span class="n">basestring</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_typeof</span><span class="p">(</span><span class="n">cdecl</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cdecl</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">CData</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">typeof</span><span class="p">(</span><span class="n">cdecl</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cdecl</span><span class="p">,</span> <span class="n">types</span><span class="o">.</span><span class="n">BuiltinFunctionType</span><span class="p">):</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="n">_builtin_function_type</span><span class="p">(</span><span class="n">cdecl</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">res</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">res</span>
+        <span class="k">if</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">cdecl</span><span class="p">,</span> <span class="n">types</span><span class="o">.</span><span class="n">FunctionType</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">cdecl</span><span class="p">,</span> <span class="s1">&#39;_cffi_base_type&#39;</span><span class="p">)):</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_cached_btype</span><span class="p">(</span><span class="n">cdecl</span><span class="o">.</span><span class="n">_cffi_base_type</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">cdecl</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">sizeof</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cdecl</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the size in bytes of the argument.  It can be a</span>
+<span class="sd">        string naming a C type, or a &#39;cdata&#39; instance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cdecl</span><span class="p">,</span> <span class="n">basestring</span><span class="p">):</span>
+            <span class="n">BType</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_typeof</span><span class="p">(</span><span class="n">cdecl</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">sizeof</span><span class="p">(</span><span class="n">BType</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">sizeof</span><span class="p">(</span><span class="n">cdecl</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">alignof</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cdecl</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the natural alignment size in bytes of the C type</span>
+<span class="sd">        given as a string.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cdecl</span><span class="p">,</span> <span class="n">basestring</span><span class="p">):</span>
+            <span class="n">cdecl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_typeof</span><span class="p">(</span><span class="n">cdecl</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">alignof</span><span class="p">(</span><span class="n">cdecl</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">offsetof</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cdecl</span><span class="p">,</span> <span class="o">*</span><span class="n">fields_or_indexes</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the offset of the named field inside the given</span>
+<span class="sd">        structure or array, which must be given as a C type name.</span>
+<span class="sd">        You can give several field names in case of nested structures.</span>
+<span class="sd">        You can also give numeric values which correspond to array</span>
+<span class="sd">        items, in case of an array type.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cdecl</span><span class="p">,</span> <span class="n">basestring</span><span class="p">):</span>
+            <span class="n">cdecl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_typeof</span><span class="p">(</span><span class="n">cdecl</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_typeoffsetof</span><span class="p">(</span><span class="n">cdecl</span><span class="p">,</span> <span class="o">*</span><span class="n">fields_or_indexes</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">new</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cdecl</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Allocate an instance according to the specified C type and</span>
+<span class="sd">        return a pointer to it.  The specified C type must be either a</span>
+<span class="sd">        pointer or an array: ``new(&#39;X *&#39;)`` allocates an X and returns</span>
+<span class="sd">        a pointer to it, whereas ``new(&#39;X[n]&#39;)`` allocates an array of</span>
+<span class="sd">        n X&#39;es and returns an array referencing it (which works</span>
+<span class="sd">        mostly like a pointer, like in C).  You can also use</span>
+<span class="sd">        ``new(&#39;X[]&#39;, n)`` to allocate an array of a non-constant</span>
+<span class="sd">        length n.</span>
+
+<span class="sd">        The memory is initialized following the rules of declaring a</span>
+<span class="sd">        global variable in C: by default it is zero-initialized, but</span>
+<span class="sd">        an explicit initializer can be given which can be used to</span>
+<span class="sd">        fill all or part of the memory.</span>
+
+<span class="sd">        When the returned &lt;cdata&gt; object goes out of scope, the memory</span>
+<span class="sd">        is freed.  In other words the returned &lt;cdata&gt; object has</span>
+<span class="sd">        ownership of the value of type &#39;cdecl&#39; that it points to.  This</span>
+<span class="sd">        means that the raw data can be used as long as this object is</span>
+<span class="sd">        kept alive, but must not be used for a longer time.  Be careful</span>
+<span class="sd">        about that when copying the pointer to the memory somewhere</span>
+<span class="sd">        else, e.g. into another structure.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cdecl</span><span class="p">,</span> <span class="n">basestring</span><span class="p">):</span>
+            <span class="n">cdecl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_typeof</span><span class="p">(</span><span class="n">cdecl</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">newp</span><span class="p">(</span><span class="n">cdecl</span><span class="p">,</span> <span class="n">init</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">new_allocator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alloc</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">free</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                      <span class="n">should_clear_after_alloc</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return a new allocator, i.e. a function that behaves like ffi.new()</span>
+<span class="sd">        but uses the provided low-level &#39;alloc&#39; and &#39;free&#39; functions.</span>
+
+<span class="sd">        &#39;alloc&#39; is called with the size as argument.  If it returns NULL, a</span>
+<span class="sd">        MemoryError is raised.  &#39;free&#39; is called with the result of &#39;alloc&#39;</span>
+<span class="sd">        as argument.  Both can be either Python function or directly C</span>
+<span class="sd">        functions.  If &#39;free&#39; is None, then no free function is called.</span>
+<span class="sd">        If both &#39;alloc&#39; and &#39;free&#39; are None, the default is used.</span>
+
+<span class="sd">        If &#39;should_clear_after_alloc&#39; is set to False, then the memory</span>
+<span class="sd">        returned by &#39;alloc&#39; is assumed to be already cleared (or you are</span>
+<span class="sd">        fine with garbage); otherwise CFFI will clear it.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">compiled_ffi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">FFI</span><span class="p">()</span>
+        <span class="n">allocator</span> <span class="o">=</span> <span class="n">compiled_ffi</span><span class="o">.</span><span class="n">new_allocator</span><span class="p">(</span><span class="n">alloc</span><span class="p">,</span> <span class="n">free</span><span class="p">,</span>
+                                               <span class="n">should_clear_after_alloc</span><span class="p">)</span>
+        <span class="k">def</span> <span class="nf">allocate</span><span class="p">(</span><span class="n">cdecl</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cdecl</span><span class="p">,</span> <span class="n">basestring</span><span class="p">):</span>
+                <span class="n">cdecl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_typeof</span><span class="p">(</span><span class="n">cdecl</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">allocator</span><span class="p">(</span><span class="n">cdecl</span><span class="p">,</span> <span class="n">init</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">allocate</span>
+
+    <span class="k">def</span> <span class="nf">cast</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cdecl</span><span class="p">,</span> <span class="n">source</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Similar to a C cast: returns an instance of the named C</span>
+<span class="sd">        type initialized with the given &#39;source&#39;.  The source is</span>
+<span class="sd">        casted between integers or pointers of any type.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cdecl</span><span class="p">,</span> <span class="n">basestring</span><span class="p">):</span>
+            <span class="n">cdecl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_typeof</span><span class="p">(</span><span class="n">cdecl</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">cdecl</span><span class="p">,</span> <span class="n">source</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">string</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cdata</span><span class="p">,</span> <span class="n">maxlen</span><span class="o">=-</span><span class="mi">1</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return a Python string (or unicode string) from the &#39;cdata&#39;.</span>
+<span class="sd">        If &#39;cdata&#39; is a pointer or array of characters or bytes, returns</span>
+<span class="sd">        the null-terminated string.  The returned string extends until</span>
+<span class="sd">        the first null character, or at most &#39;maxlen&#39; characters.  If</span>
+<span class="sd">        &#39;cdata&#39; is an array then &#39;maxlen&#39; defaults to its length.</span>
+
+<span class="sd">        If &#39;cdata&#39; is a pointer or array of wchar_t, returns a unicode</span>
+<span class="sd">        string following the same rules.</span>
+
+<span class="sd">        If &#39;cdata&#39; is a single character or byte or a wchar_t, returns</span>
+<span class="sd">        it as a string or unicode string.</span>
+
+<span class="sd">        If &#39;cdata&#39; is an enum, returns the value of the enumerator as a</span>
+<span class="sd">        string, or &#39;NUMBER&#39; if the value is out of range.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">string</span><span class="p">(</span><span class="n">cdata</span><span class="p">,</span> <span class="n">maxlen</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">unpack</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cdata</span><span class="p">,</span> <span class="n">length</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Unpack an array of C data of the given length,</span>
+<span class="sd">        returning a Python string/unicode/list.</span>
+
+<span class="sd">        If &#39;cdata&#39; is a pointer to &#39;char&#39;, returns a byte string.</span>
+<span class="sd">        It does not stop at the first null.  This is equivalent to:</span>
+<span class="sd">        ffi.buffer(cdata, length)[:]</span>
+
+<span class="sd">        If &#39;cdata&#39; is a pointer to &#39;wchar_t&#39;, returns a unicode string.</span>
+<span class="sd">        &#39;length&#39; is measured in wchar_t&#39;s; it is not the size in bytes.</span>
+
+<span class="sd">        If &#39;cdata&#39; is a pointer to anything else, returns a list of</span>
+<span class="sd">        &#39;length&#39; items.  This is a faster equivalent to:</span>
+<span class="sd">        [cdata[i] for i in range(length)]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">unpack</span><span class="p">(</span><span class="n">cdata</span><span class="p">,</span> <span class="n">length</span><span class="p">)</span>
+
+   <span class="c1">#def buffer(self, cdata, size=-1):</span>
+   <span class="c1">#    &quot;&quot;&quot;Return a read-write buffer object that references the raw C data</span>
+   <span class="c1">#    pointed to by the given &#39;cdata&#39;.  The &#39;cdata&#39; must be a pointer or</span>
+   <span class="c1">#    an array.  Can be passed to functions expecting a buffer, or directly</span>
+   <span class="c1">#    manipulated with:</span>
+   <span class="c1">#</span>
+   <span class="c1">#        buf[:]          get a copy of it in a regular string, or</span>
+   <span class="c1">#        buf[idx]        as a single character</span>
+   <span class="c1">#        buf[:] = ...</span>
+   <span class="c1">#        buf[idx] = ...  change the content</span>
+   <span class="c1">#    &quot;&quot;&quot;</span>
+   <span class="c1">#    note that &#39;buffer&#39; is a type, set on this instance by __init__</span>
+
+    <span class="k">def</span> <span class="nf">from_buffer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cdecl</span><span class="p">,</span> <span class="n">python_buffer</span><span class="o">=</span><span class="n">_unspecified</span><span class="p">,</span>
+                    <span class="n">require_writable</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return a cdata of the given type pointing to the data of the</span>
+<span class="sd">        given Python object, which must support the buffer interface.</span>
+<span class="sd">        Note that this is not meant to be used on the built-in types</span>
+<span class="sd">        str or unicode (you can build &#39;char[]&#39; arrays explicitly)</span>
+<span class="sd">        but only on objects containing large quantities of raw data</span>
+<span class="sd">        in some other format, like &#39;array.array&#39; or numpy arrays.</span>
+
+<span class="sd">        The first argument is optional and default to &#39;char[]&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">python_buffer</span> <span class="ow">is</span> <span class="n">_unspecified</span><span class="p">:</span>
+            <span class="n">cdecl</span><span class="p">,</span> <span class="n">python_buffer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">BCharA</span><span class="p">,</span> <span class="n">cdecl</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cdecl</span><span class="p">,</span> <span class="n">basestring</span><span class="p">):</span>
+            <span class="n">cdecl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_typeof</span><span class="p">(</span><span class="n">cdecl</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">from_buffer</span><span class="p">(</span><span class="n">cdecl</span><span class="p">,</span> <span class="n">python_buffer</span><span class="p">,</span>
+                                         <span class="n">require_writable</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">memmove</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dest</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;ffi.memmove(dest, src, n) copies n bytes of memory from src to dest.</span>
+
+<span class="sd">        Like the C function memmove(), the memory areas may overlap;</span>
+<span class="sd">        apart from that it behaves like the C function memcpy().</span>
+
+<span class="sd">        &#39;src&#39; can be any cdata ptr or array, or any Python buffer object.</span>
+<span class="sd">        &#39;dest&#39; can be any cdata ptr or array, or a writable Python buffer</span>
+<span class="sd">        object.  The size to copy, &#39;n&#39;, is always measured in bytes.</span>
+
+<span class="sd">        Unlike other methods, this one supports all Python buffer including</span>
+<span class="sd">        byte strings and bytearrays---but it still does not support</span>
+<span class="sd">        non-contiguous buffers.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">memmove</span><span class="p">(</span><span class="n">dest</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cdecl</span><span class="p">,</span> <span class="n">python_callable</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">onerror</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return a callback object or a decorator making such a</span>
+<span class="sd">        callback object.  &#39;cdecl&#39; must name a C function pointer type.</span>
+<span class="sd">        The callback invokes the specified &#39;python_callable&#39; (which may</span>
+<span class="sd">        be provided either directly or via a decorator).  Important: the</span>
+<span class="sd">        callback object must be manually kept alive for as long as the</span>
+<span class="sd">        callback may be invoked from the C level.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">def</span> <span class="nf">callback_decorator_wrap</span><span class="p">(</span><span class="n">python_callable</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">callable</span><span class="p">(</span><span class="n">python_callable</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;the &#39;python_callable&#39; argument &quot;</span>
+                                <span class="s2">&quot;is not callable&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">callback</span><span class="p">(</span><span class="n">cdecl</span><span class="p">,</span> <span class="n">python_callable</span><span class="p">,</span>
+                                          <span class="n">error</span><span class="p">,</span> <span class="n">onerror</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cdecl</span><span class="p">,</span> <span class="n">basestring</span><span class="p">):</span>
+            <span class="n">cdecl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_typeof</span><span class="p">(</span><span class="n">cdecl</span><span class="p">,</span> <span class="n">consider_function_as_funcptr</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">python_callable</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">callback_decorator_wrap</span>                <span class="c1"># decorator mode</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">callback_decorator_wrap</span><span class="p">(</span><span class="n">python_callable</span><span class="p">)</span>  <span class="c1"># direct mode</span>
+
+    <span class="k">def</span> <span class="nf">getctype</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cdecl</span><span class="p">,</span> <span class="n">replace_with</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return a string giving the C type &#39;cdecl&#39;, which may be itself</span>
+<span class="sd">        a string or a &lt;ctype&gt; object.  If &#39;replace_with&#39; is given, it gives</span>
+<span class="sd">        extra text to append (or insert for more complicated C types), like</span>
+<span class="sd">        a variable name, or &#39;*&#39; to get actually the C type &#39;pointer-to-cdecl&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cdecl</span><span class="p">,</span> <span class="n">basestring</span><span class="p">):</span>
+            <span class="n">cdecl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_typeof</span><span class="p">(</span><span class="n">cdecl</span><span class="p">)</span>
+        <span class="n">replace_with</span> <span class="o">=</span> <span class="n">replace_with</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">replace_with</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;*&#39;</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="s1">&#39;&amp;[&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">getcname</span><span class="p">(</span><span class="n">cdecl</span><span class="p">,</span> <span class="s1">&#39;&amp;&#39;</span><span class="p">)):</span>
+            <span class="n">replace_with</span> <span class="o">=</span> <span class="s1">&#39;(</span><span class="si">%s</span><span class="s1">)&#39;</span> <span class="o">%</span> <span class="n">replace_with</span>
+        <span class="k">elif</span> <span class="n">replace_with</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">replace_with</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="s1">&#39;[(&#39;</span><span class="p">:</span>
+            <span class="n">replace_with</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="n">replace_with</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">getcname</span><span class="p">(</span><span class="n">cdecl</span><span class="p">,</span> <span class="n">replace_with</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">gc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cdata</span><span class="p">,</span> <span class="n">destructor</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return a new cdata object that points to the same</span>
+<span class="sd">        data.  Later, when this new cdata object is garbage-collected,</span>
+<span class="sd">        &#39;destructor(old_cdata_object)&#39; will be called.</span>
+
+<span class="sd">        The optional &#39;size&#39; gives an estimate of the size, used to</span>
+<span class="sd">        trigger the garbage collection more eagerly.  So far only used</span>
+<span class="sd">        on PyPy.  It tells the GC that the returned object keeps alive</span>
+<span class="sd">        roughly &#39;size&#39; bytes of external memory.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">gcp</span><span class="p">(</span><span class="n">cdata</span><span class="p">,</span> <span class="n">destructor</span><span class="p">,</span> <span class="n">size</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_cached_btype</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">type</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="o">.</span><span class="n">acquire</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">False</span>
+        <span class="c1"># call me with the lock!</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">BType</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cached_btypes</span><span class="p">[</span><span class="nb">type</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="n">finishlist</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">BType</span> <span class="o">=</span> <span class="nb">type</span><span class="o">.</span><span class="n">get_cached_btype</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">finishlist</span><span class="p">)</span>
+            <span class="k">for</span> <span class="nb">type</span> <span class="ow">in</span> <span class="n">finishlist</span><span class="p">:</span>
+                <span class="nb">type</span><span class="o">.</span><span class="n">finish_backend_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">finishlist</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">BType</span>
+
+    <span class="k">def</span> <span class="nf">verify</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">tmpdir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Verify that the current ffi signatures compile on this</span>
+<span class="sd">        machine, and return a dynamic library object.  The dynamic</span>
+<span class="sd">        library can be used to call functions and access global</span>
+<span class="sd">        variables declared in this &#39;ffi&#39;.  The library is compiled</span>
+<span class="sd">        by the C compiler: it gives you C-level API compatibility</span>
+<span class="sd">        (including calling macros).  This is unlike &#39;ffi.dlopen()&#39;,</span>
+<span class="sd">        which requires binary compatibility in the signatures.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">.verifier</span> <span class="k">import</span> <span class="n">Verifier</span><span class="p">,</span> <span class="n">_caller_dir_pycache</span>
+        <span class="c1">#</span>
+        <span class="c1"># If set_unicode(True) was called, insert the UNICODE and</span>
+        <span class="c1"># _UNICODE macro declarations</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_windows_unicode</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_apply_windows_unicode</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="c1">#</span>
+        <span class="c1"># Set the tmpdir here, and not in Verifier.__init__: it picks</span>
+        <span class="c1"># up the caller&#39;s directory, which we want to be the caller of</span>
+        <span class="c1"># ffi.verify(), as opposed to the caller of Veritier().</span>
+        <span class="n">tmpdir</span> <span class="o">=</span> <span class="n">tmpdir</span> <span class="ow">or</span> <span class="n">_caller_dir_pycache</span><span class="p">()</span>
+        <span class="c1">#</span>
+        <span class="c1"># Make a Verifier() and use it to load the library.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">verifier</span> <span class="o">=</span> <span class="n">Verifier</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">tmpdir</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">lib</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">verifier</span><span class="o">.</span><span class="n">load_library</span><span class="p">()</span>
+        <span class="c1">#</span>
+        <span class="c1"># Save the loaded library for keep-alive purposes, even</span>
+        <span class="c1"># if the caller doesn&#39;t keep it alive itself (it should).</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_libraries</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">lib</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">lib</span>
+
+    <span class="k">def</span> <span class="nf">_get_errno</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">get_errno</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">_set_errno</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">errno</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">set_errno</span><span class="p">(</span><span class="n">errno</span><span class="p">)</span>
+    <span class="n">errno</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">_get_errno</span><span class="p">,</span> <span class="n">_set_errno</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span>
+                     <span class="s2">&quot;the value of &#39;errno&#39; from/to the C calls&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">getwinerror</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">code</span><span class="o">=-</span><span class="mi">1</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">getwinerror</span><span class="p">(</span><span class="n">code</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_pointer_to</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctype</span><span class="p">):</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">model</span><span class="o">.</span><span class="n">pointer_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctype</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">addressof</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cdata</span><span class="p">,</span> <span class="o">*</span><span class="n">fields_or_indexes</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the address of a &lt;cdata &#39;struct-or-union&#39;&gt;.</span>
+<span class="sd">        If &#39;fields_or_indexes&#39; are given, returns the address of that</span>
+<span class="sd">        field or array item in the structure or array, recursively in</span>
+<span class="sd">        case of nested structures.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">ctype</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">typeof</span><span class="p">(</span><span class="n">cdata</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s1">&#39;__addressof__&#39;</span> <span class="ow">in</span> <span class="nb">type</span><span class="p">(</span><span class="n">cdata</span><span class="p">)</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">:</span>
+                <span class="k">return</span> <span class="nb">type</span><span class="p">(</span><span class="n">cdata</span><span class="p">)</span><span class="o">.</span><span class="n">__addressof__</span><span class="p">(</span><span class="n">cdata</span><span class="p">,</span> <span class="o">*</span><span class="n">fields_or_indexes</span><span class="p">)</span>
+            <span class="k">raise</span>
+        <span class="k">if</span> <span class="n">fields_or_indexes</span><span class="p">:</span>
+            <span class="n">ctype</span><span class="p">,</span> <span class="n">offset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_typeoffsetof</span><span class="p">(</span><span class="n">ctype</span><span class="p">,</span> <span class="o">*</span><span class="n">fields_or_indexes</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">ctype</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s2">&quot;pointer&quot;</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;addressof(pointer)&quot;</span><span class="p">)</span>
+            <span class="n">offset</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">ctypeptr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pointer_to</span><span class="p">(</span><span class="n">ctype</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">rawaddressof</span><span class="p">(</span><span class="n">ctypeptr</span><span class="p">,</span> <span class="n">cdata</span><span class="p">,</span> <span class="n">offset</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_typeoffsetof</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctype</span><span class="p">,</span> <span class="n">field_or_index</span><span class="p">,</span> <span class="o">*</span><span class="n">fields_or_indexes</span><span class="p">):</span>
+        <span class="n">ctype</span><span class="p">,</span> <span class="n">offset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">typeoffsetof</span><span class="p">(</span><span class="n">ctype</span><span class="p">,</span> <span class="n">field_or_index</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">field1</span> <span class="ow">in</span> <span class="n">fields_or_indexes</span><span class="p">:</span>
+            <span class="n">ctype</span><span class="p">,</span> <span class="n">offset1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">typeoffsetof</span><span class="p">(</span><span class="n">ctype</span><span class="p">,</span> <span class="n">field1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">offset</span> <span class="o">+=</span> <span class="n">offset1</span>
+        <span class="k">return</span> <span class="n">ctype</span><span class="p">,</span> <span class="n">offset</span>
+
+    <span class="k">def</span> <span class="nf">include</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ffi_to_include</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Includes the typedefs, structs, unions and enums defined</span>
+<span class="sd">        in another FFI instance.  Usage is similar to a #include in C,</span>
+<span class="sd">        where a part of the program might include types defined in</span>
+<span class="sd">        another part for its own usage.  Note that the include()</span>
+<span class="sd">        method has no effect on functions, constants and global</span>
+<span class="sd">        variables, which must anyway be accessed directly from the</span>
+<span class="sd">        lib object returned by the original FFI instance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ffi_to_include</span><span class="p">,</span> <span class="n">FFI</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;ffi.include() expects an argument that is also of&quot;</span>
+                            <span class="s2">&quot; type cffi.FFI, not </span><span class="si">%r</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span>
+                                <span class="nb">type</span><span class="p">(</span><span class="n">ffi_to_include</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,))</span>
+        <span class="k">if</span> <span class="n">ffi_to_include</span> <span class="ow">is</span> <span class="bp">self</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;self.include(self)&quot;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">ffi_to_include</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_parser</span><span class="o">.</span><span class="n">include</span><span class="p">(</span><span class="n">ffi_to_include</span><span class="o">.</span><span class="n">_parser</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_cdefsources</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;[&#39;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_cdefsources</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">ffi_to_include</span><span class="o">.</span><span class="n">_cdefsources</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_cdefsources</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;]&#39;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_included_ffis</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ffi_to_include</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">new_handle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">newp_handle</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">BVoidP</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">from_handle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">from_handle</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">release</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="o">.</span><span class="n">release</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">set_unicode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">enabled_flag</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Windows: if &#39;enabled_flag&#39; is True, enable the UNICODE and</span>
+<span class="sd">        _UNICODE defines in C, and declare the types like TCHAR and LPTCSTR</span>
+<span class="sd">        to be (pointers to) wchar_t.  If &#39;enabled_flag&#39; is False,</span>
+<span class="sd">        declare these types to be (pointers to) plain 8-bit characters.</span>
+<span class="sd">        This is mostly for backward compatibility; you usually want True.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_windows_unicode</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;set_unicode() can only be called once&quot;</span><span class="p">)</span>
+        <span class="n">enabled_flag</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">enabled_flag</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">enabled_flag</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cdef</span><span class="p">(</span><span class="s2">&quot;typedef wchar_t TBYTE;&quot;</span>
+                      <span class="s2">&quot;typedef wchar_t TCHAR;&quot;</span>
+                      <span class="s2">&quot;typedef const wchar_t *LPCTSTR;&quot;</span>
+                      <span class="s2">&quot;typedef const wchar_t *PCTSTR;&quot;</span>
+                      <span class="s2">&quot;typedef wchar_t *LPTSTR;&quot;</span>
+                      <span class="s2">&quot;typedef wchar_t *PTSTR;&quot;</span>
+                      <span class="s2">&quot;typedef TBYTE *PTBYTE;&quot;</span>
+                      <span class="s2">&quot;typedef TCHAR *PTCHAR;&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cdef</span><span class="p">(</span><span class="s2">&quot;typedef char TBYTE;&quot;</span>
+                      <span class="s2">&quot;typedef char TCHAR;&quot;</span>
+                      <span class="s2">&quot;typedef const char *LPCTSTR;&quot;</span>
+                      <span class="s2">&quot;typedef const char *PCTSTR;&quot;</span>
+                      <span class="s2">&quot;typedef char *LPTSTR;&quot;</span>
+                      <span class="s2">&quot;typedef char *PTSTR;&quot;</span>
+                      <span class="s2">&quot;typedef TBYTE *PTBYTE;&quot;</span>
+                      <span class="s2">&quot;typedef TCHAR *PTCHAR;&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_windows_unicode</span> <span class="o">=</span> <span class="n">enabled_flag</span>
+
+    <span class="k">def</span> <span class="nf">_apply_windows_unicode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kwds</span><span class="p">):</span>
+        <span class="n">defmacros</span> <span class="o">=</span> <span class="n">kwds</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;define_macros&#39;</span><span class="p">,</span> <span class="p">())</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">defmacros</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;&#39;define_macros&#39; must be a list or tuple&quot;</span><span class="p">)</span>
+        <span class="n">defmacros</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">defmacros</span><span class="p">)</span> <span class="o">+</span> <span class="p">[(</span><span class="s1">&#39;UNICODE&#39;</span><span class="p">,</span> <span class="s1">&#39;1&#39;</span><span class="p">),</span>
+                                       <span class="p">(</span><span class="s1">&#39;_UNICODE&#39;</span><span class="p">,</span> <span class="s1">&#39;1&#39;</span><span class="p">)]</span>
+        <span class="n">kwds</span><span class="p">[</span><span class="s1">&#39;define_macros&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">defmacros</span>
+
+    <span class="k">def</span> <span class="nf">_apply_embedding_fix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kwds</span><span class="p">):</span>
+        <span class="c1"># must include an argument like &quot;-lpython2.7&quot; for the compiler</span>
+        <span class="k">def</span> <span class="nf">ensure</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+            <span class="n">lst</span> <span class="o">=</span> <span class="n">kwds</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="k">if</span> <span class="n">value</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">lst</span><span class="p">:</span>
+                <span class="n">lst</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="c1">#</span>
+        <span class="k">if</span> <span class="s1">&#39;__pypy__&#39;</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">builtin_module_names</span><span class="p">:</span>
+            <span class="kn">import</span> <span class="nn">os</span>
+            <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span> <span class="o">==</span> <span class="s2">&quot;win32&quot;</span><span class="p">:</span>
+                <span class="c1"># we need &#39;libpypy-c.lib&#39;.  Current distributions of</span>
+                <span class="c1"># pypy (&gt;= 4.1) contain it as &#39;libs/python27.lib&#39;.</span>
+                <span class="n">pythonlib</span> <span class="o">=</span> <span class="s2">&quot;python</span><span class="si">{0[0]}{0[1]}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">version_info</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">sys</span><span class="p">,</span> <span class="s1">&#39;prefix&#39;</span><span class="p">):</span>
+                    <span class="n">ensure</span><span class="p">(</span><span class="s1">&#39;library_dirs&#39;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">prefix</span><span class="p">,</span> <span class="s1">&#39;libs&#39;</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># we need &#39;libpypy-c.{so,dylib}&#39;, which should be by</span>
+                <span class="c1"># default located in &#39;sys.prefix/bin&#39; for installed</span>
+                <span class="c1"># systems.</span>
+                <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">version_info</span> <span class="o">&lt;</span> <span class="p">(</span><span class="mi">3</span><span class="p">,):</span>
+                    <span class="n">pythonlib</span> <span class="o">=</span> <span class="s2">&quot;pypy-c&quot;</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">pythonlib</span> <span class="o">=</span> <span class="s2">&quot;pypy3-c&quot;</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">sys</span><span class="p">,</span> <span class="s1">&#39;prefix&#39;</span><span class="p">):</span>
+                    <span class="n">ensure</span><span class="p">(</span><span class="s1">&#39;library_dirs&#39;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">prefix</span><span class="p">,</span> <span class="s1">&#39;bin&#39;</span><span class="p">))</span>
+            <span class="c1"># On uninstalled pypy&#39;s, the libpypy-c is typically found in</span>
+            <span class="c1"># .../pypy/goal/.</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">sys</span><span class="p">,</span> <span class="s1">&#39;prefix&#39;</span><span class="p">):</span>
+                <span class="n">ensure</span><span class="p">(</span><span class="s1">&#39;library_dirs&#39;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">prefix</span><span class="p">,</span> <span class="s1">&#39;pypy&#39;</span><span class="p">,</span> <span class="s1">&#39;goal&#39;</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span> <span class="o">==</span> <span class="s2">&quot;win32&quot;</span><span class="p">:</span>
+                <span class="n">template</span> <span class="o">=</span> <span class="s2">&quot;python</span><span class="si">%d%d</span><span class="s2">&quot;</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">sys</span><span class="p">,</span> <span class="s1">&#39;gettotalrefcount&#39;</span><span class="p">):</span>
+                    <span class="n">template</span> <span class="o">+=</span> <span class="s1">&#39;_d&#39;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="kn">import</span> <span class="nn">sysconfig</span>
+                <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>    <span class="c1"># 2.6</span>
+                    <span class="kn">from</span> <span class="nn">distutils</span> <span class="k">import</span> <span class="n">sysconfig</span>
+                <span class="n">template</span> <span class="o">=</span> <span class="s2">&quot;python</span><span class="si">%d</span><span class="s2">.</span><span class="si">%d</span><span class="s2">&quot;</span>
+                <span class="k">if</span> <span class="n">sysconfig</span><span class="o">.</span><span class="n">get_config_var</span><span class="p">(</span><span class="s1">&#39;DEBUG_EXT&#39;</span><span class="p">):</span>
+                    <span class="n">template</span> <span class="o">+=</span> <span class="n">sysconfig</span><span class="o">.</span><span class="n">get_config_var</span><span class="p">(</span><span class="s1">&#39;DEBUG_EXT&#39;</span><span class="p">)</span>
+            <span class="n">pythonlib</span> <span class="o">=</span> <span class="p">(</span><span class="n">template</span> <span class="o">%</span>
+                    <span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">hexversion</span> <span class="o">&gt;&gt;</span> <span class="mi">24</span><span class="p">,</span> <span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">hexversion</span> <span class="o">&gt;&gt;</span> <span class="mi">16</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">))</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">sys</span><span class="p">,</span> <span class="s1">&#39;abiflags&#39;</span><span class="p">):</span>
+                <span class="n">pythonlib</span> <span class="o">+=</span> <span class="n">sys</span><span class="o">.</span><span class="n">abiflags</span>
+        <span class="n">ensure</span><span class="p">(</span><span class="s1">&#39;libraries&#39;</span><span class="p">,</span> <span class="n">pythonlib</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span> <span class="o">==</span> <span class="s2">&quot;win32&quot;</span><span class="p">:</span>
+            <span class="n">ensure</span><span class="p">(</span><span class="s1">&#39;extra_link_args&#39;</span><span class="p">,</span> <span class="s1">&#39;/MANIFEST&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">set_source</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">module_name</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">source_extension</span><span class="o">=</span><span class="s1">&#39;.c&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">os</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;_assigned_source&#39;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;set_source() cannot be called several times &quot;</span>
+                             <span class="s2">&quot;per ffi object&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">module_name</span><span class="p">,</span> <span class="n">basestring</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;&#39;module_name&#39; must be a string&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">sep</span> <span class="ow">in</span> <span class="n">module_name</span> <span class="ow">or</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">altsep</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">altsep</span> <span class="ow">in</span> <span class="n">module_name</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;&#39;module_name&#39; must not contain &#39;/&#39;: use a dotted &quot;</span>
+                             <span class="s2">&quot;name to make a &#39;package.module&#39; location&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_assigned_source</span> <span class="o">=</span> <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">module_name</span><span class="p">),</span> <span class="n">source</span><span class="p">,</span>
+                                 <span class="n">source_extension</span><span class="p">,</span> <span class="n">kwds</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">set_source_pkgconfig</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">module_name</span><span class="p">,</span> <span class="n">pkgconfig_libs</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span>
+                             <span class="n">source_extension</span><span class="o">=</span><span class="s1">&#39;.c&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">):</span>
+        <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">pkgconfig</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pkgconfig_libs</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;the pkgconfig_libs argument must be a list &quot;</span>
+                            <span class="s2">&quot;of package names&quot;</span><span class="p">)</span>
+        <span class="n">kwds2</span> <span class="o">=</span> <span class="n">pkgconfig</span><span class="o">.</span><span class="n">flags_from_pkgconfig</span><span class="p">(</span><span class="n">pkgconfig_libs</span><span class="p">)</span>
+        <span class="n">pkgconfig</span><span class="o">.</span><span class="n">merge_flags</span><span class="p">(</span><span class="n">kwds</span><span class="p">,</span> <span class="n">kwds2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_source</span><span class="p">(</span><span class="n">module_name</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">source_extension</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">distutils_extension</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tmpdir</span><span class="o">=</span><span class="s1">&#39;build&#39;</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="kn">from</span> <span class="nn">distutils.dir_util</span> <span class="k">import</span> <span class="n">mkpath</span>
+        <span class="kn">from</span> <span class="nn">.recompiler</span> <span class="k">import</span> <span class="n">recompile</span>
+        <span class="c1">#</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;_assigned_source&#39;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;verifier&#39;</span><span class="p">):</span>     <span class="c1"># fallback, &#39;tmpdir&#39; ignored</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">verifier</span><span class="o">.</span><span class="n">get_extension</span><span class="p">()</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;set_source() must be called before&quot;</span>
+                             <span class="s2">&quot; distutils_extension()&quot;</span><span class="p">)</span>
+        <span class="n">module_name</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">source_extension</span><span class="p">,</span> <span class="n">kwds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_assigned_source</span>
+        <span class="k">if</span> <span class="n">source</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;distutils_extension() is only for C extension &quot;</span>
+                            <span class="s2">&quot;modules, not for dlopen()-style pure Python &quot;</span>
+                            <span class="s2">&quot;modules&quot;</span><span class="p">)</span>
+        <span class="n">mkpath</span><span class="p">(</span><span class="n">tmpdir</span><span class="p">)</span>
+        <span class="n">ext</span><span class="p">,</span> <span class="n">updated</span> <span class="o">=</span> <span class="n">recompile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">module_name</span><span class="p">,</span>
+                                 <span class="n">source</span><span class="p">,</span> <span class="n">tmpdir</span><span class="o">=</span><span class="n">tmpdir</span><span class="p">,</span> <span class="n">extradir</span><span class="o">=</span><span class="n">tmpdir</span><span class="p">,</span>
+                                 <span class="n">source_extension</span><span class="o">=</span><span class="n">source_extension</span><span class="p">,</span>
+                                 <span class="n">call_c_compiler</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">updated</span><span class="p">:</span>
+                <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;regenerated: </span><span class="si">%r</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">ext</span><span class="o">.</span><span class="n">sources</span><span class="p">[</span><span class="mi">0</span><span class="p">],))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;not modified: </span><span class="si">%r</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">ext</span><span class="o">.</span><span class="n">sources</span><span class="p">[</span><span class="mi">0</span><span class="p">],))</span>
+        <span class="k">return</span> <span class="n">ext</span>
+
+    <span class="k">def</span> <span class="nf">emit_c_code</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="kn">from</span> <span class="nn">.recompiler</span> <span class="k">import</span> <span class="n">recompile</span>
+        <span class="c1">#</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;_assigned_source&#39;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;set_source() must be called before emit_c_code()&quot;</span><span class="p">)</span>
+        <span class="n">module_name</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">source_extension</span><span class="p">,</span> <span class="n">kwds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_assigned_source</span>
+        <span class="k">if</span> <span class="n">source</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;emit_c_code() is only for C extension modules, &quot;</span>
+                            <span class="s2">&quot;not for dlopen()-style pure Python modules&quot;</span><span class="p">)</span>
+        <span class="n">recompile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">module_name</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span>
+                  <span class="n">c_file</span><span class="o">=</span><span class="n">filename</span><span class="p">,</span> <span class="n">call_c_compiler</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">emit_python_code</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="kn">from</span> <span class="nn">.recompiler</span> <span class="k">import</span> <span class="n">recompile</span>
+        <span class="c1">#</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;_assigned_source&#39;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;set_source() must be called before emit_c_code()&quot;</span><span class="p">)</span>
+        <span class="n">module_name</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">source_extension</span><span class="p">,</span> <span class="n">kwds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_assigned_source</span>
+        <span class="k">if</span> <span class="n">source</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;emit_python_code() is only for dlopen()-style &quot;</span>
+                            <span class="s2">&quot;pure Python modules, not for C extension modules&quot;</span><span class="p">)</span>
+        <span class="n">recompile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">module_name</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span>
+                  <span class="n">c_file</span><span class="o">=</span><span class="n">filename</span><span class="p">,</span> <span class="n">call_c_compiler</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">compile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tmpdir</span><span class="o">=</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">debug</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The &#39;target&#39; argument gives the final file name of the</span>
+<span class="sd">        compiled DLL.  Use &#39;*&#39; to force distutils&#39; choice, suitable for</span>
+<span class="sd">        regular CPython C API modules.  Use a file name ending in &#39;.*&#39;</span>
+<span class="sd">        to ask for the system&#39;s default extension for dynamic libraries</span>
+<span class="sd">        (.so/.dll/.dylib).</span>
+
+<span class="sd">        The default is &#39;*&#39; when building a non-embedded C API extension,</span>
+<span class="sd">        and (module_name + &#39;.*&#39;) when building an embedded library.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">.recompiler</span> <span class="k">import</span> <span class="n">recompile</span>
+        <span class="c1">#</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;_assigned_source&#39;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;set_source() must be called before compile()&quot;</span><span class="p">)</span>
+        <span class="n">module_name</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">source_extension</span><span class="p">,</span> <span class="n">kwds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_assigned_source</span>
+        <span class="k">return</span> <span class="n">recompile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">module_name</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">tmpdir</span><span class="o">=</span><span class="n">tmpdir</span><span class="p">,</span>
+                         <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">source_extension</span><span class="o">=</span><span class="n">source_extension</span><span class="p">,</span>
+                         <span class="n">compiler_verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span> <span class="n">debug</span><span class="o">=</span><span class="n">debug</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">init_once</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">tag</span><span class="p">):</span>
+        <span class="c1"># Read _init_once_cache[tag], which is either (False, lock) if</span>
+        <span class="c1"># we&#39;re calling the function now in some thread, or (True, result).</span>
+        <span class="c1"># Don&#39;t call setdefault() in most cases, to avoid allocating and</span>
+        <span class="c1"># immediately freeing a lock; but still use setdefaut() to avoid</span>
+        <span class="c1"># races.</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_init_once_cache</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_init_once_cache</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="n">allocate_lock</span><span class="p">()))</span>
+        <span class="c1"># Common case: we got (True, result), so we return the result.</span>
+        <span class="k">if</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="c1"># Else, it&#39;s a lock.  Acquire it to serialize the following tests.</span>
+        <span class="k">with</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="c1"># Read again from _init_once_cache the current status.</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_init_once_cache</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                <span class="k">return</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="c1"># Call the function and store the result back.</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">func</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_init_once_cache</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span>
+
+    <span class="k">def</span> <span class="nf">embedding_init_code</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pysource</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_embedding</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;embedding_init_code() can only be called once&quot;</span><span class="p">)</span>
+        <span class="c1"># fix &#39;pysource&#39; before it gets dumped into the C file:</span>
+        <span class="c1"># - remove empty lines at the beginning, so it starts at &quot;line 1&quot;</span>
+        <span class="c1"># - dedent, if all non-empty lines are indented</span>
+        <span class="c1"># - check for SyntaxErrors</span>
+        <span class="kn">import</span> <span class="nn">re</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;\s*\n&#39;</span><span class="p">,</span> <span class="n">pysource</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
+            <span class="n">pysource</span> <span class="o">=</span> <span class="n">pysource</span><span class="p">[</span><span class="n">match</span><span class="o">.</span><span class="n">end</span><span class="p">():]</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="n">pysource</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span> <span class="ow">or</span> <span class="p">[</span><span class="s1">&#39;&#39;</span><span class="p">]</span>
+        <span class="n">prefix</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;\s*&#39;</span><span class="p">,</span> <span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">group</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">)):</span>
+            <span class="n">line</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">rstrip</span><span class="p">():</span>
+                <span class="k">while</span> <span class="ow">not</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">prefix</span><span class="p">):</span>
+                    <span class="n">prefix</span> <span class="o">=</span> <span class="n">prefix</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">prefix</span><span class="p">)</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span><span class="n">line</span><span class="p">[</span><span class="n">i</span><span class="p">:]</span><span class="o">+</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">]</span>
+        <span class="n">pysource</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
+        <span class="c1">#</span>
+        <span class="nb">compile</span><span class="p">(</span><span class="n">pysource</span><span class="p">,</span> <span class="s2">&quot;cffi_init&quot;</span><span class="p">,</span> <span class="s2">&quot;exec&quot;</span><span class="p">)</span>
+        <span class="c1">#</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_embedding</span> <span class="o">=</span> <span class="n">pysource</span>
+
+    <span class="k">def</span> <span class="nf">def_extern</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;ffi.def_extern() is only available on API-mode FFI &quot;</span>
+                         <span class="s2">&quot;objects&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">list_types</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Returns the user type names known to this FFI instance.</span>
+<span class="sd">        This returns a tuple containing three lists of names:</span>
+<span class="sd">        (typedef_names, names_of_structs, names_of_unions)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">typedefs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">structs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">unions</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parser</span><span class="o">.</span><span class="n">_declarations</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;typedef &#39;</span><span class="p">):</span>
+                <span class="n">typedefs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">key</span><span class="p">[</span><span class="mi">8</span><span class="p">:])</span>
+            <span class="k">elif</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;struct &#39;</span><span class="p">):</span>
+                <span class="n">structs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">key</span><span class="p">[</span><span class="mi">7</span><span class="p">:])</span>
+            <span class="k">elif</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;union &#39;</span><span class="p">):</span>
+                <span class="n">unions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">key</span><span class="p">[</span><span class="mi">6</span><span class="p">:])</span>
+        <span class="n">typedefs</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+        <span class="n">structs</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+        <span class="n">unions</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">typedefs</span><span class="p">,</span> <span class="n">structs</span><span class="p">,</span> <span class="n">unions</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_load_backend_lib</span><span class="p">(</span><span class="n">backend</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">flags</span><span class="p">):</span>
+    <span class="kn">import</span> <span class="nn">os</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">basestring</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span> <span class="o">!=</span> <span class="s2">&quot;win32&quot;</span> <span class="ow">or</span> <span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">backend</span><span class="o">.</span><span class="n">load_library</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">flags</span><span class="p">)</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;c&quot;</span>    <span class="c1"># Windows: load_library(None) fails, but this works</span>
+                      <span class="c1"># on Python 2 (backward compatibility hack only)</span>
+    <span class="n">first_error</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="s1">&#39;.&#39;</span> <span class="ow">in</span> <span class="n">name</span> <span class="ow">or</span> <span class="s1">&#39;/&#39;</span> <span class="ow">in</span> <span class="n">name</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">sep</span> <span class="ow">in</span> <span class="n">name</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">backend</span><span class="o">.</span><span class="n">load_library</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">flags</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">first_error</span> <span class="o">=</span> <span class="n">e</span>
+    <span class="kn">import</span> <span class="nn">ctypes.util</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">find_library</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;c&quot;</span> <span class="ow">and</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span> <span class="o">==</span> <span class="s2">&quot;win32&quot;</span> <span class="ow">and</span> <span class="n">sys</span><span class="o">.</span><span class="n">version_info</span> <span class="o">&gt;=</span> <span class="p">(</span><span class="mi">3</span><span class="p">,):</span>
+            <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;dlopen(None) cannot work on Windows for Python 3 &quot;</span>
+                          <span class="s2">&quot;(see http://bugs.python.org/issue23606)&quot;</span><span class="p">)</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;ctypes.util.find_library() did not manage &quot;</span>
+               <span class="s2">&quot;to locate a library called </span><span class="si">%r</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">name</span><span class="p">,))</span>
+        <span class="k">if</span> <span class="n">first_error</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">.  Additionally, </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">first_error</span><span class="p">,</span> <span class="n">msg</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">backend</span><span class="o">.</span><span class="n">load_library</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">flags</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">_make_ffi_library</span><span class="p">(</span><span class="n">ffi</span><span class="p">,</span> <span class="n">libname</span><span class="p">,</span> <span class="n">flags</span><span class="p">):</span>
+    <span class="n">backend</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">_backend</span>
+    <span class="n">backendlib</span> <span class="o">=</span> <span class="n">_load_backend_lib</span><span class="p">(</span><span class="n">backend</span><span class="p">,</span> <span class="n">libname</span><span class="p">,</span> <span class="n">flags</span><span class="p">)</span>
+    <span class="c1">#</span>
+    <span class="k">def</span> <span class="nf">accessor_function</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="s1">&#39;function &#39;</span> <span class="o">+</span> <span class="n">name</span>
+        <span class="n">tp</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">_parser</span><span class="o">.</span><span class="n">_declarations</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="n">BType</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">_get_cached_btype</span><span class="p">(</span><span class="n">tp</span><span class="p">)</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">backendlib</span><span class="o">.</span><span class="n">load_function</span><span class="p">(</span><span class="n">BType</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="n">library</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+    <span class="c1">#</span>
+    <span class="k">def</span> <span class="nf">accessor_variable</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="s1">&#39;variable &#39;</span> <span class="o">+</span> <span class="n">name</span>
+        <span class="n">tp</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">_parser</span><span class="o">.</span><span class="n">_declarations</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="n">BType</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">_get_cached_btype</span><span class="p">(</span><span class="n">tp</span><span class="p">)</span>
+        <span class="n">read_variable</span> <span class="o">=</span> <span class="n">backendlib</span><span class="o">.</span><span class="n">read_variable</span>
+        <span class="n">write_variable</span> <span class="o">=</span> <span class="n">backendlib</span><span class="o">.</span><span class="n">write_variable</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">FFILibrary</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="nb">property</span><span class="p">(</span>
+            <span class="k">lambda</span> <span class="bp">self</span><span class="p">:</span> <span class="n">read_variable</span><span class="p">(</span><span class="n">BType</span><span class="p">,</span> <span class="n">name</span><span class="p">),</span>
+            <span class="k">lambda</span> <span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">write_variable</span><span class="p">(</span><span class="n">BType</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)))</span>
+    <span class="c1">#</span>
+    <span class="k">def</span> <span class="nf">addressof_var</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">addr_variables</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">ffi</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">addr_variables</span><span class="p">:</span>
+                    <span class="n">key</span> <span class="o">=</span> <span class="s1">&#39;variable &#39;</span> <span class="o">+</span> <span class="n">name</span>
+                    <span class="n">tp</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">_parser</span><span class="o">.</span><span class="n">_declarations</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+                    <span class="n">BType</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">_get_cached_btype</span><span class="p">(</span><span class="n">tp</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">BType</span><span class="o">.</span><span class="n">kind</span> <span class="o">!=</span> <span class="s1">&#39;array&#39;</span><span class="p">:</span>
+                        <span class="n">BType</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">pointer_cache</span><span class="p">(</span><span class="n">ffi</span><span class="p">,</span> <span class="n">BType</span><span class="p">)</span>
+                    <span class="n">p</span> <span class="o">=</span> <span class="n">backendlib</span><span class="o">.</span><span class="n">load_function</span><span class="p">(</span><span class="n">BType</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+                    <span class="n">addr_variables</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">p</span>
+            <span class="k">return</span> <span class="n">addr_variables</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+    <span class="c1">#</span>
+    <span class="k">def</span> <span class="nf">accessor_constant</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;non-integer constant &#39;</span><span class="si">%s</span><span class="s2">&#39; cannot be &quot;</span>
+                                  <span class="s2">&quot;accessed from a dlopen() library&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">name</span><span class="p">,))</span>
+    <span class="c1">#</span>
+    <span class="k">def</span> <span class="nf">accessor_int_constant</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+        <span class="n">library</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">_parser</span><span class="o">.</span><span class="n">_int_constants</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+    <span class="c1">#</span>
+    <span class="n">accessors</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">accessors_version</span> <span class="o">=</span> <span class="p">[</span><span class="kc">False</span><span class="p">]</span>
+    <span class="n">addr_variables</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="c1">#</span>
+    <span class="k">def</span> <span class="nf">update_accessors</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">accessors_version</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="n">ffi</span><span class="o">.</span><span class="n">_cdef_version</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="c1">#</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="p">(</span><span class="n">tp</span><span class="p">,</span> <span class="n">_</span><span class="p">)</span> <span class="ow">in</span> <span class="n">ffi</span><span class="o">.</span><span class="n">_parser</span><span class="o">.</span><span class="n">_declarations</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tp</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">EnumType</span><span class="p">):</span>
+                <span class="n">tag</span><span class="p">,</span> <span class="n">name</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">tag</span> <span class="o">==</span> <span class="s1">&#39;function&#39;</span><span class="p">:</span>
+                    <span class="n">accessors</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">accessor_function</span>
+                <span class="k">elif</span> <span class="n">tag</span> <span class="o">==</span> <span class="s1">&#39;variable&#39;</span><span class="p">:</span>
+                    <span class="n">accessors</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">accessor_variable</span>
+                <span class="k">elif</span> <span class="n">tag</span> <span class="o">==</span> <span class="s1">&#39;constant&#39;</span><span class="p">:</span>
+                    <span class="n">accessors</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">accessor_constant</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">enumname</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tp</span><span class="o">.</span><span class="n">enumerators</span><span class="p">):</span>
+                    <span class="k">def</span> <span class="nf">accessor_enum</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">tp</span><span class="o">=</span><span class="n">tp</span><span class="p">,</span> <span class="n">i</span><span class="o">=</span><span class="n">i</span><span class="p">):</span>
+                        <span class="n">tp</span><span class="o">.</span><span class="n">check_not_partial</span><span class="p">()</span>
+                        <span class="n">library</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">tp</span><span class="o">.</span><span class="n">enumvalues</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                    <span class="n">accessors</span><span class="p">[</span><span class="n">enumname</span><span class="p">]</span> <span class="o">=</span> <span class="n">accessor_enum</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">ffi</span><span class="o">.</span><span class="n">_parser</span><span class="o">.</span><span class="n">_int_constants</span><span class="p">:</span>
+            <span class="n">accessors</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">accessor_int_constant</span><span class="p">)</span>
+        <span class="n">accessors_version</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">_cdef_version</span>
+    <span class="c1">#</span>
+    <span class="k">def</span> <span class="nf">make_accessor</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">ffi</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">library</span><span class="o">.</span><span class="vm">__dict__</span> <span class="ow">or</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">FFILibrary</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">:</span>
+                <span class="k">return</span>    <span class="c1"># added by another thread while waiting for the lock</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">accessors</span><span class="p">:</span>
+                <span class="n">update_accessors</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">accessors</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+            <span class="n">accessors</span><span class="p">[</span><span class="n">name</span><span class="p">](</span><span class="n">name</span><span class="p">)</span>
+    <span class="c1">#</span>
+    <span class="k">class</span> <span class="nc">FFILibrary</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+            <span class="n">make_accessor</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+            <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="k">def</span> <span class="nf">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="nb">property</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="n">make_accessor</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">property</span><span class="o">.</span><span class="fm">__set__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+        <span class="k">def</span> <span class="nf">__dir__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">with</span> <span class="n">ffi</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+                <span class="n">update_accessors</span><span class="p">()</span>
+                <span class="k">return</span> <span class="n">accessors</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+        <span class="k">def</span> <span class="nf">__addressof__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">library</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">library</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">FFILibrary</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">addressof_var</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+            <span class="n">make_accessor</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">library</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">library</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">FFILibrary</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">addressof_var</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s2">&quot;cffi library has no function or &quot;</span>
+                                 <span class="s2">&quot;global variable named &#39;</span><span class="si">%s</span><span class="s2">&#39;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">name</span><span class="p">,))</span>
+        <span class="k">def</span> <span class="nf">__cffi_close__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="n">backendlib</span><span class="o">.</span><span class="n">close_lib</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+    <span class="c1">#</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">libname</span><span class="p">,</span> <span class="n">basestring</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">libname</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>    <span class="c1"># unicode, on Python 2</span>
+                <span class="n">libname</span> <span class="o">=</span> <span class="n">libname</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+            <span class="n">FFILibrary</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">=</span> <span class="s1">&#39;FFILibrary_</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">libname</span>
+        <span class="k">except</span> <span class="ne">UnicodeError</span><span class="p">:</span>
+            <span class="k">pass</span>
+    <span class="n">library</span> <span class="o">=</span> <span class="n">FFILibrary</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">library</span><span class="p">,</span> <span class="n">library</span><span class="o">.</span><span class="vm">__dict__</span>
+
+<span class="k">def</span> <span class="nf">_builtin_function_type</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+    <span class="c1"># a hack to make at least ffi.typeof(builtin_function) work,</span>
+    <span class="c1"># if the builtin function was obtained by &#39;vengine_cpy&#39;.</span>
+    <span class="kn">import</span> <span class="nn">sys</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">module</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">[</span><span class="n">func</span><span class="o">.</span><span class="vm">__module__</span><span class="p">]</span>
+        <span class="n">ffi</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">_cffi_original_ffi</span>
+        <span class="n">types_of_builtin_funcs</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">_cffi_types_of_builtin_funcs</span>
+        <span class="n">tp</span> <span class="o">=</span> <span class="n">types_of_builtin_funcs</span><span class="p">[</span><span class="n">func</span><span class="p">]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">KeyError</span><span class="p">,</span> <span class="ne">AttributeError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">ffi</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">ffi</span><span class="o">.</span><span class="n">_get_cached_btype</span><span class="p">(</span><span class="n">tp</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, Oxford Nanopore Technologies
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

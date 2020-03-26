@@ -1,0 +1,22 @@
+bwapy package
+=============
+
+Submodules
+----------
+
+bwapy.libbwa module
+-------------------
+
+.. automodule:: bwapy.libbwa
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+Module contents
+---------------
+
+.. automodule:: bwapy
+    :members:
+    :undoc-members:
+    :show-inheritance:

@@ -1,0 +1,474 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>bwapy.libbwa &mdash; Bwapy 0.1.4 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script type="text/javascript" src="../../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> Bwapy
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1.4
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../bwapy.html">bwapy package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Bwapy</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>bwapy.libbwa</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for bwapy.libbwa</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">namedtuple</span>
+<span class="kn">import</span> <span class="nn">importlib</span>
+<span class="kn">import</span> <span class="nn">imp</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="kn">from</span> <span class="nn">cffi</span> <span class="k">import</span> <span class="n">FFI</span>
+<span class="n">ffi</span> <span class="o">=</span> <span class="n">FFI</span><span class="p">()</span>
+
+<span class="sd">&quot;&quot;&quot;High-level interface to bwa (mem) aligner.&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="get_shared_lib"><a class="viewcode-back" href="../../bwapy.html#bwapy.libbwa.get_shared_lib">[docs]</a><span class="k">def</span> <span class="nf">get_shared_lib</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Cross-platform resolution of shared-object libraries, working</span>
+<span class="sd">    around vagueries of setuptools.</span>
+<span class="sd">    :param name: name of shared library to find.</span>
+
+<span class="sd">    :returns: FFI shared library object.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># after &#39;python setup.py install&#39; we should be able to do this</span>
+        <span class="n">lib_file</span> <span class="o">=</span> <span class="n">importlib</span><span class="o">.</span><span class="n">import_module</span><span class="p">(</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="vm">__file__</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># after &#39;python setup.py develop&#39; this should work</span>
+            <span class="n">lib_file</span> <span class="o">=</span> <span class="n">imp</span><span class="o">.</span><span class="n">find_module</span><span class="p">(</span><span class="n">name</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="s1">&#39;Cannot locate C library &quot;</span><span class="si">{}</span><span class="s1">&quot;.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">lib_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">lib_file</span><span class="p">)</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">library</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">dlopen</span><span class="p">(</span><span class="n">lib_file</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">library</span></div>
+
+
+<span class="n">libbwa</span> <span class="o">=</span> <span class="n">get_shared_lib</span><span class="p">(</span><span class="s1">&#39;bwalib&#39;</span><span class="p">)</span>
+
+<span class="n">ffi</span><span class="o">.</span><span class="n">cdef</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">  ////////////////////////////////</span>
+<span class="s2">  // Alignment hit list structures</span>
+<span class="s2">  //</span>
+<span class="s2">  typedef struct {</span>
+<span class="s2">    int64_t rb, re; // [rb,re): reference sequence in the alignment</span>
+<span class="s2">    int qb, qe;     // [qb,qe): query sequence in the alignment</span>
+<span class="s2">    int rid;        // reference seq ID</span>
+<span class="s2">    int score;      // best local SW score</span>
+<span class="s2">    int truesc;     // actual score corresponding to the aligned region; possibly smaller than $score</span>
+<span class="s2">    int sub;        // 2nd best SW score</span>
+<span class="s2">    int alt_sc;</span>
+<span class="s2">    int csub;       // SW score of a tandem hit</span>
+<span class="s2">    int sub_n;      // approximate number of suboptimal hits</span>
+<span class="s2">    int w;          // actual band width used in extension</span>
+<span class="s2">    int seedcov;    // length of regions coverged by seeds</span>
+<span class="s2">    int secondary;  // index of the parent hit shadowing the current hit; &lt;0 if primary</span>
+<span class="s2">    int secondary_all;</span>
+<span class="s2">    int seedlen0;   // length of the starting seed</span>
+<span class="s2">    int n_comp:30, is_alt:2; // number of sub-alignments chained together</span>
+<span class="s2">    float frac_rep;</span>
+<span class="s2">    uint64_t hash;</span>
+<span class="s2">  } mem_alnreg_t;</span>
+
+<span class="s2">  typedef struct { size_t n, m; mem_alnreg_t *a; } mem_alnreg_v;</span>
+
+<span class="s2">  typedef struct {   // This struct is only used for the convenience of API.</span>
+<span class="s2">    int64_t pos;     // forward strand 5&#39;-end mapping position</span>
+<span class="s2">    int rid;         // reference sequence index in bntseq_t; &lt;0 for unmapped</span>
+<span class="s2">    int flag;        // extra flag</span>
+<span class="s2">    uint32_t is_rev:1, is_alt:1, mapq:8, NM:22; // is_rev: whether on the reverse strand; mapq: mapping quality; NM: edit distance</span>
+<span class="s2">    int n_cigar;     // number of CIGAR operations</span>
+<span class="s2">    uint32_t *cigar; // CIGAR in the BAM encoding: opLen&lt;&lt;4|op; op to integer mapping: MIDSH=&gt;01234</span>
+<span class="s2">    char *XA;        // alternative mappings</span>
+
+<span class="s2">    int score, sub, alt_sc;</span>
+<span class="s2">  } mem_aln_t;</span>
+
+<span class="s2">  typedef struct { size_t n; mem_aln_t *aln; } mem_aln_v;</span>
+
+<span class="s2">  void free_mem_aln_v (mem_aln_v *alns);</span>
+
+<span class="s2">  ///////////////////////</span>
+<span class="s2">  // bwa index structures</span>
+<span class="s2">  //</span>
+<span class="s2">  typedef uint64_t bwtint_t;</span>
+
+<span class="s2">  typedef struct {</span>
+<span class="s2">    bwtint_t primary; // S^{-1}(0), or the primary index of BWT</span>
+<span class="s2">    bwtint_t L2[5]; // C(), cumulative count</span>
+<span class="s2">    bwtint_t seq_len; // sequence length</span>
+<span class="s2">    bwtint_t bwt_size; // size of bwt, about seq_len/4</span>
+<span class="s2">    uint32_t *bwt; // BWT</span>
+<span class="s2">    // occurance array, separated to two parts</span>
+<span class="s2">    uint32_t cnt_table[256];</span>
+<span class="s2">    // suffix array</span>
+<span class="s2">    int sa_intv;</span>
+<span class="s2">    bwtint_t n_sa;</span>
+<span class="s2">    bwtint_t *sa;</span>
+<span class="s2">  } bwt_t;</span>
+
+<span class="s2">  typedef struct {</span>
+<span class="s2">    int64_t offset;</span>
+<span class="s2">    int32_t len;</span>
+<span class="s2">    int32_t n_ambs;</span>
+<span class="s2">    uint32_t gi;</span>
+<span class="s2">    int32_t is_alt;</span>
+<span class="s2">    char *name, *anno;</span>
+<span class="s2">  } bntann1_t;</span>
+
+<span class="s2">  typedef struct {</span>
+<span class="s2">    int64_t offset;</span>
+<span class="s2">    int32_t len;</span>
+<span class="s2">    char amb;</span>
+<span class="s2">  } bntamb1_t;</span>
+
+<span class="s2">  typedef struct {</span>
+<span class="s2">    int64_t l_pac;</span>
+<span class="s2">    int32_t n_seqs;</span>
+<span class="s2">    uint32_t seed;</span>
+<span class="s2">    bntann1_t *anns; // n_seqs elements</span>
+<span class="s2">    int32_t n_holes;</span>
+<span class="s2">    bntamb1_t *ambs; // n_holes elements</span>
+<span class="s2">    FILE *fp_pac;</span>
+<span class="s2">  } bntseq_t;</span>
+
+<span class="s2">  typedef struct {</span>
+<span class="s2">    bwt_t    *bwt; // FM-index</span>
+<span class="s2">    bntseq_t *bns; // information on the reference sequences</span>
+<span class="s2">    uint8_t  *pac; // the actual 2-bit encoded reference sequences with &#39;N&#39; converted to a random base</span>
+
+<span class="s2">    int    is_shm;</span>
+<span class="s2">    int64_t l_mem;</span>
+<span class="s2">    uint8_t  *mem;</span>
+<span class="s2">  } bwaidx_t;</span>
+
+<span class="s2">  bwaidx_t *bwa_idx_load_all(const char *hint);</span>
+<span class="s2">  void bwa_idx_destroy(bwaidx_t *idx);</span>
+
+<span class="s2">  /////////////////</span>
+<span class="s2">  // Option parsing</span>
+<span class="s2">  //</span>
+<span class="s2">  typedef struct {</span>
+<span class="s2">    int a, b;               // match score and mismatch penalty</span>
+<span class="s2">    int o_del, e_del;</span>
+<span class="s2">    int o_ins, e_ins;</span>
+<span class="s2">    int pen_unpaired;       // phred-scaled penalty for unpaired reads</span>
+<span class="s2">    int pen_clip5,pen_clip3;// clipping penalty. This score is not deducted from the DP score.</span>
+<span class="s2">    int w;                  // band width</span>
+<span class="s2">    int zdrop;              // Z-dropoff</span>
+
+<span class="s2">    uint64_t max_mem_intv;</span>
+
+<span class="s2">    int T;                  // output score threshold; only affecting output</span>
+<span class="s2">    int flag;               // see MEM_F_* macros</span>
+<span class="s2">    int min_seed_len;       // minimum seed length</span>
+<span class="s2">    int min_chain_weight;</span>
+<span class="s2">    int max_chain_extend;</span>
+<span class="s2">    float split_factor;     // split into a seed if MEM is longer than min_seed_len*split_factor</span>
+<span class="s2">    int split_width;        // split into a seed if its occurence is smaller than this value</span>
+<span class="s2">    int max_occ;            // skip a seed if its occurence is larger than this value</span>
+<span class="s2">    int max_chain_gap;      // do not chain seed if it is max_chain_gap-bp away from the closest seed</span>
+<span class="s2">    int n_threads;          // number of threads</span>
+<span class="s2">    int chunk_size;         // process chunk_size-bp sequences in a batch</span>
+<span class="s2">    float mask_level;       // regard a hit as redundant if the overlap with another better hit is over mask_level times the min length of the two hits</span>
+<span class="s2">    float drop_ratio;       // drop a chain if its seed coverage is below drop_ratio times the seed coverage of a better chain overlapping with the small chain</span>
+<span class="s2">    float XA_drop_ratio;    // when counting hits for the XA tag, ignore alignments with score &lt; XA_drop_ratio * max_score; only effective for the XA tag</span>
+<span class="s2">    float mask_level_redun;</span>
+<span class="s2">    float mapQ_coef_len;</span>
+<span class="s2">    int mapQ_coef_fac;</span>
+<span class="s2">    int max_ins;            // when estimating insert size distribution, skip pairs with insert longer than this value</span>
+<span class="s2">    int max_matesw;         // perform maximally max_matesw rounds of mate-SW for each end</span>
+<span class="s2">    int max_XA_hits, max_XA_hits_alt; // if there are max_hits or fewer, output them all</span>
+<span class="s2">    int8_t mat[25];         // scoring matrix; mat[0] == 0 if unset</span>
+<span class="s2">  } mem_opt_t;</span>
+
+<span class="s2">  mem_opt_t * get_opts(int argc, char *argv[], bwaidx_t * idx);</span>
+
+<span class="s2">  static const char valid_opts[];</span>
+
+
+<span class="s2">  ///////////////////</span>
+<span class="s2">  // Run an alignment</span>
+<span class="s2">  //</span>
+<span class="s2">  mem_aln_v *align(mem_opt_t * opt, bwaidx_t * index, char * seq);</span>
+<span class="s2">&quot;&quot;&quot;</span><span class="p">)</span>
+
+
+<span class="n">Alignment</span> <span class="o">=</span> <span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;Alignment&#39;</span><span class="p">,</span> <span class="p">[</span>
+    <span class="s1">&#39;rname&#39;</span><span class="p">,</span> <span class="s1">&#39;orient&#39;</span><span class="p">,</span> <span class="s1">&#39;pos&#39;</span><span class="p">,</span> <span class="s1">&#39;mapq&#39;</span><span class="p">,</span> <span class="s1">&#39;cigar&#39;</span><span class="p">,</span> <span class="s1">&#39;NM&#39;</span>
+<span class="p">])</span>
+
+<div class="viewcode-block" id="BwaAligner"><a class="viewcode-back" href="../../bwapy.html#bwapy.libbwa.BwaAligner">[docs]</a><span class="k">class</span> <span class="nc">BwaAligner</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span><span class="nb">str</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span><span class="nb">str</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Interface to bwa mem alignment.</span>
+
+<span class="sd">        :param index: bwa index base path.</span>
+<span class="sd">        :param options: alignment options as would be given</span>
+<span class="sd">            on the bwa mem command line.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">index_base</span> <span class="o">=</span> <span class="n">index</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cigchar</span> <span class="o">=</span> <span class="s2">&quot;MIDSH&quot;</span>
+
+
+        <span class="c1"># find which options are valid</span>
+        <span class="n">valid_opts</span> <span class="o">=</span> <span class="n">ffi</span><span class="o">.</span><span class="n">string</span><span class="p">(</span><span class="n">libbwa</span><span class="o">.</span><span class="n">valid_opts</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">opt</span> <span class="ow">in</span> <span class="n">options</span><span class="o">.</span><span class="n">split</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">opt</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;-&#39;</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">opt</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">valid_opts</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;Option &#39;</span><span class="si">{}</span><span class="s2">&#39; is not a valid option (allowed: </span><span class="si">{}</span><span class="s2">).&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                     <span class="n">opt</span><span class="p">,</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">valid_opts</span><span class="p">)</span>
+                <span class="p">))</span>
+
+        <span class="c1"># we need to pass the index to the option parsing</span>
+        <span class="c1"># TODO: clean up this requirement</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">libbwa</span><span class="o">.</span><span class="n">bwa_idx_load_all</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index_base</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">index</span> <span class="o">==</span> <span class="n">ffi</span><span class="o">.</span><span class="n">NULL</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Failed to load bwa index.&#39;</span><span class="p">)</span>
+
+        <span class="n">argv</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;bwapy&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">options</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+        <span class="n">argc</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">argv</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opt</span> <span class="o">=</span> <span class="n">libbwa</span><span class="o">.</span><span class="n">get_opts</span><span class="p">(</span><span class="n">argc</span><span class="p">,</span>
+            <span class="p">[</span><span class="n">ffi</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s1">&#39;char[]&#39;</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">argv</span><span class="p">],</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">index</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">opt</span> <span class="o">==</span> <span class="n">ffi</span><span class="o">.</span><span class="n">NULL</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Failed to parse options.&#39;</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;index&#39;</span><span class="p">):</span>
+            <span class="n">libbwa</span><span class="o">.</span><span class="n">bwa_idx_destroy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;opts&#39;</span><span class="p">):</span>
+            <span class="n">cffi</span><span class="o">.</span><span class="n">free</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opts</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_build_alignment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">aln</span><span class="p">):</span>
+        <span class="n">cigar</span> <span class="o">=</span> <span class="n">aln</span><span class="o">.</span><span class="n">cigar</span>
+        <span class="n">cigar</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+            <span class="c1"># oplen + op</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">cigar</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">&gt;&gt;</span><span class="mi">4</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cigchar</span><span class="p">[</span><span class="n">cigar</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">&amp;</span> <span class="mh">0xf</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">aln</span><span class="o">.</span><span class="n">n_cigar</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">Alignment</span><span class="p">(</span>
+            <span class="n">ffi</span><span class="o">.</span><span class="n">string</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">bns</span><span class="o">.</span><span class="n">anns</span><span class="p">[</span><span class="n">aln</span><span class="o">.</span><span class="n">rid</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(),</span>
+            <span class="s1">&#39;+-&#39;</span><span class="p">[</span><span class="n">aln</span><span class="o">.</span><span class="n">is_rev</span><span class="p">],</span> <span class="n">aln</span><span class="o">.</span><span class="n">pos</span><span class="p">,</span> <span class="n">aln</span><span class="o">.</span><span class="n">mapq</span><span class="p">,</span> <span class="n">cigar</span><span class="p">,</span> <span class="n">aln</span><span class="o">.</span><span class="n">NM</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="BwaAligner.align_seq"><a class="viewcode-back" href="../../bwapy.html#bwapy.libbwa.BwaAligner.align_seq">[docs]</a>    <span class="k">def</span> <span class="nf">align_seq</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">seq</span><span class="p">:</span><span class="nb">str</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Align a sequence to the index.</span>
+
+<span class="sd">        :param seq: base sequence to align</span>
+
+<span class="sd">        :returns: tuple of :class:`Alignment`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">alns</span> <span class="o">=</span> <span class="n">libbwa</span><span class="o">.</span><span class="n">align</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opt</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">seq</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">alns</span> <span class="o">==</span> <span class="n">ffi</span><span class="o">.</span><span class="n">NULL</span><span class="p">:</span>
+            <span class="n">alignments</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">alignments</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_build_alignment</span><span class="p">(</span><span class="n">alns</span><span class="o">.</span><span class="n">aln</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">alns</span><span class="o">.</span><span class="n">n</span><span class="p">))</span>
+            <span class="n">libbwa</span><span class="o">.</span><span class="n">free_mem_aln_v</span><span class="p">(</span><span class="n">alns</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">alignments</span></div></div>
+
+
+<div class="viewcode-block" id="get_parser"><a class="viewcode-back" href="../../bwapy.html#bwapy.libbwa.get_parser">[docs]</a><span class="k">def</span> <span class="nf">get_parser</span><span class="p">():</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="s1">&#39;Align a sequence with bwa mem.&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;index&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;bwa index base path.&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;sequence&#39;</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="s1">&#39;+&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;base sequence&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">parser</span></div>
+
+
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../../bwapy.html#bwapy.libbwa.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="n">args</span><span class="p">,</span> <span class="n">opts</span> <span class="o">=</span> <span class="n">get_parser</span><span class="p">()</span><span class="o">.</span><span class="n">parse_known_args</span><span class="p">()</span>
+    <span class="n">options</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">opts</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">options</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">opts</span><span class="p">)</span>
+    <span class="n">aligner</span> <span class="o">=</span> <span class="n">BwaAligner</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="n">options</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">seq</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">sequence</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">alignments</span> <span class="o">=</span> <span class="n">aligner</span><span class="o">.</span><span class="n">align_seq</span><span class="p">(</span><span class="n">seq</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Found </span><span class="si">{}</span><span class="s1"> alignments for input </span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">alignments</span><span class="p">),</span> <span class="n">i</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">aln</span> <span class="ow">in</span> <span class="n">alignments</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;  &#39;</span><span class="p">,</span> <span class="n">aln</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, Oxford Nanopore Technologies
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

@@ -1,0 +1,7 @@
+bwapy
+=====
+
+.. toctree::
+   :maxdepth: 4
+
+   bwapy
