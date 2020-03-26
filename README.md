@@ -1,7 +1,7 @@
 bwapy
 =====
 
-*This package is no longer maintained by Oxford Nanopore Technologies'. It is left here
+*This package is no longer maintained by Oxford Nanopore Technologies. It is left here
 for posterity as we know of no other python binding to bwa.*
 ---
 
