@@ -1,6 +1,10 @@
 bwapy
 =====
 
+*This package is no longer maintained by Oxford Nanopore Technologies'. It is left here
+for posterity as we know of no other python binding to bwa.*
+---
+
 [![Build Status](https://travis-ci.org/nanoporetech/bwapy.svg?branch=master)](https://travis-ci.org/nanoporetech/bwapy)
 
 Python bindings to `bwa mem` aligner; sufficient to load and index and perform
